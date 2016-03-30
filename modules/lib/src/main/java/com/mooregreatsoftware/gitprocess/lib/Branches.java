@@ -20,8 +20,6 @@ import java.util.Iterator;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.mooregreatsoftware.gitprocess.lib.StreamUtils.stream;
-
 /**
  * The "container" for branches, this gives easy access to the most important branches (current, integration,
  * parking, etc.) as well as all the other branches.

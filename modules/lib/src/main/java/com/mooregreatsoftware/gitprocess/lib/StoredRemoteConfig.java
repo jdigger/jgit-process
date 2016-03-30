@@ -26,7 +26,6 @@ import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
-import static com.mooregreatsoftware.gitprocess.lib.StreamUtils.stream;
 import static java.util.Optional.of;
 import static org.eclipse.jgit.lib.Constants.DEFAULT_REMOTE_NAME;
 

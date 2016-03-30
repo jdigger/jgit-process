@@ -88,7 +88,8 @@ public class NewFeatureBranch {
     private static Branch baseBranch(@Nonnull GitLib gitLib, @Nonnull Branches branches, @Nonnull Branch integrationBranch) {
         if (!branches.onParking() || integrationBranchContainsAllOfParking(gitLib, integrationBranch)) {
             return integrationBranch;
-        } else {
+        }
+        else {
             return branches.parking();
         }
     }

@@ -32,7 +32,7 @@ import java.io.File;
 public class NewFeatureBranchRunner {
 
     public static void main(String[] args) {
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger) LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
         root.setLevel(ch.qos.logback.classic.Level.TRACE);
         final GitLib gitLib = ExecUtils.e(() -> GitLib.of(new File(".")));
         NewFeatureBranch.newFeatureBranch(gitLib, "froble");

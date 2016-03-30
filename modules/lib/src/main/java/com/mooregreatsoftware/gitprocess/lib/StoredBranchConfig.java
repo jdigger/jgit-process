@@ -28,7 +28,6 @@ import java.util.stream.Collectors;
 
 import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
 import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
-import static com.mooregreatsoftware.gitprocess.lib.StreamUtils.stream;
 import static java.util.Optional.empty;
 import static org.eclipse.jgit.lib.ConfigConstants.CONFIG_BRANCH_SECTION;
 import static org.eclipse.jgit.lib.ConfigConstants.CONFIG_KEY_MERGE;

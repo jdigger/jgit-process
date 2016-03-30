@@ -1,12 +1,13 @@
 buildscript {
     repositories {
         maven {
+            mavenLocal()
             url "http://dl.bintray.com/jmoore/java-lib"
         }
     }
     //noinspection GroovyAssignabilityCheck
     dependencies {
-        classpath 'com.mooregreatsoftware:gradle-defaults:1.0.4'
+        classpath 'com.mooregreatsoftware:gradle-defaults:1.0.5'
     }
 }
 
@@ -54,18 +55,6 @@ allprojects {
     }
 }
 
-bintray {
-    pkg {
-        licenses = ['Apache-2.0']
-        attributes = ['plat': ['git', 'java']]
-
-        //noinspection GroovyAssignabilityCheck
-        version {
-            attributes = ['git-process': ["${project.group}:${project.name}"]]
-        }
-    }
-}
-
 apply plugin: 'com.mooregreatsoftware.defaults'
 
 defaults {
@@ -81,6 +70,18 @@ defaults {
     ]
 
     copyrightYears = '2016'
+}
+
+bintray {
+    pkg {
+        licenses = ['Apache-2.0']
+        attributes = ['plat': ['git', 'java']]
+
+        //noinspection GroovyAssignabilityCheck
+        version {
+            attributes = ['git-process': ["${project.group}:${project.name}"]]
+        }
+    }
 }
 
 //noinspection GroovyAssignabilityCheck

@@ -27,7 +27,6 @@ import javax.annotation.Nonnull;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
 
-import static com.mooregreatsoftware.gitprocess.lib.StreamUtils.stream;
 import static java.util.Optional.empty;
 import static org.eclipse.jgit.lib.Constants.R_HEADS;
 import static org.eclipse.jgit.lib.Constants.R_REFS;
@@ -204,8 +203,9 @@ public class Branch {
                 final ObjectId topOfOtherBranch = walk.parseCommit(otherBranch.objectId()).getId();
                 walk.markStart(topOfThisBranch);
                 return StreamSupport.stream(walk.spliterator(), false).
-                        anyMatch(tcommit -> topOfOtherBranch.equals(tcommit.getId()));
-            } finally {
+                    anyMatch(tcommit -> topOfOtherBranch.equals(tcommit.getId()));
+            }
+            finally {
                 walk.dispose();
             }
         });
