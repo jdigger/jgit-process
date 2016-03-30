@@ -1,4 +1,10 @@
 = README
 
+**_NOT YET READY_**
+
+Please check back later. :-)
+
+This is currently meant to be a direct port of https://github.com/jdigger/git-process[git-process] from Ruby to Java.
+
 * link:docs/troubleshooting.adoc[Troubleshooting]
 * link:docs/ssh.adoc[Working with SSH]
