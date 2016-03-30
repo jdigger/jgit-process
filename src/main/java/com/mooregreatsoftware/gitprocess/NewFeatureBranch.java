@@ -4,6 +4,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import java.io.File;
 
 /**
  * Creates a new feature branch.
@@ -79,6 +80,14 @@ public class NewFeatureBranch {
     private static boolean integrationBranchContainsAllOfParking(@Nonnull GitLib gitLib, @Nonnull Branch integrationBranch) {
         final Branch parking = gitLib.branches().parking();
         return integrationBranch.containsAllOf(parking);
+    }
+
+
+    public static void main(String[] args) {
+        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
+        root.setLevel(ch.qos.logback.classic.Level.TRACE);
+        final GitLib gitLib = ExecUtils.e(() -> GitLib.of(new File(".")));
+        NewFeatureBranch.newFeatureBranch(gitLib, "froble");
     }
 
 }
