@@ -1,1 +1,7 @@
 rootProject.name = 'git-process'
+
+include ':bin'
+project(':bin').projectDir = "$rootDir/modules/bin" as File
+
+include ':lib'
+project(':lib').projectDir = "$rootDir/modules/lib" as File
