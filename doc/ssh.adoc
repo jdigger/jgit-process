@@ -1,0 +1,20 @@
+= SSH Support
+
+If you're using SSH for the connection transport for cloning, fetching, pushing, etc. it's supported with
+http://www.jcraft.com/jsch/[JCraft's great Jsch library]. In addition to supporting normal ~/.ssh/id_rsa style
+keypairs, it will use http://nerderati.com/2011/03/17/simplify-your-life-with-an-ssh-config-file/[~/.ssh/config
+for custom private keys].
+
+== Using ssh-agent
+
+If you have a password-protected private key, you certainly don't want to have to type in that password every
+single time git tries to talk to the server. https://developer.github.com/guides/using-ssh-agent-forwarding/[ssh-agent
+handles remembering your password for you], associated with your local user account. (Stored in the Keychain on OS X.)
+
+If the `SSH_AUTH_SOCK` environment variable is defined, it's assumed that `ssh-agent` is running and Jsch will use it
+for decrypting key pairs.
+
+== Performance
+
+Unfortunately, initializing https://en.wikipedia.org/wiki/Java_Cryptography_Extension[the Java Cryptography
+Extension (JCE)] is **_slow_**, taking up to five seconds on many machines.

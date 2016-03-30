@@ -1,5 +1,6 @@
 package com.mooregreatsoftware.gitprocess;
 
+import com.mooregreatsoftware.gitprocess.transport.GitTransportConfigCallback;
 import org.eclipse.jgit.api.Git;
 import org.eclipse.jgit.api.RemoteAddCommand;
 import org.eclipse.jgit.api.errors.GitAPIException;
@@ -110,7 +111,11 @@ public class GitLib implements AutoCloseable {
     private Optional<SimpleFetchResult> simpleFetchResult() throws GitAPIException {
         final String remoteName = remoteConfig().remoteName().get();
         LOG.info("Fetching latest from \"{}\"", remoteName);
-        final FetchResult fetchResult = jgit.fetch().setRemote(remoteName).setRemoveDeletedRefs(true).call();
+        final FetchResult fetchResult = jgit.fetch().
+            setRemote(remoteName).
+            setRemoveDeletedRefs(true).
+            setTransportConfigCallback(new GitTransportConfigCallback()).
+            call();
         final SimpleFetchResult result = new SimpleFetchResult(fetchResult);
         LOG.debug(result.toString());
         return Optional.of(result);
@@ -171,4 +176,5 @@ public class GitLib implements AutoCloseable {
     public int hashCode() {
         return jgit.getRepository().getWorkTree().hashCode();
     }
+
 }
