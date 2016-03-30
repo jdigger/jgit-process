@@ -4,4 +4,3 @@
 
 The default --info level is designed to provide "`just enough`" logging to assure you that things are behaving as they
 should. But to know what's _really_ happening, turn up the logging level.
-

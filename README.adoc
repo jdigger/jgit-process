@@ -1,0 +1,4 @@
+= README
+
+* link:docs/troubleshooting.adoc[Troubleshooting]
+* link:docs/ssh.adoc[Working with SSH]
