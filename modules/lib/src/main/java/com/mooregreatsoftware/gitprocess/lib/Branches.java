@@ -13,14 +13,14 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess;
+package com.mooregreatsoftware.gitprocess.lib;
 
 import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.mooregreatsoftware.gitprocess.StreamUtils.stream;
+import static com.mooregreatsoftware.gitprocess.lib.StreamUtils.stream;
 
 /**
  * The "container" for branches, this gives easy access to the most important branches (current, integration,
@@ -120,13 +120,13 @@ public interface Branches {
 
     @Nonnull
     default Iterator<Branch> remoteBranches() {
-        return stream(allBranches()).filter(Branch::isRemote).collect(Collectors.toList()).listIterator();
+        return StreamUtils.stream(allBranches()).filter(Branch::isRemote).collect(Collectors.toList()).listIterator();
     }
 
 
     @Nonnull
     default Iterator<Branch> localBranches() {
-        return stream(allBranches()).filter(branch -> !branch.isRemote()).collect(Collectors.toList()).listIterator();
+        return StreamUtils.stream(allBranches()).filter(branch -> !branch.isRemote()).collect(Collectors.toList()).listIterator();
     }
 
     Branches removeBranch(@Nonnull Branch baseBranch);

@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess
+package com.mooregreatsoftware.gitprocess.lib
 
+import com.mooregreatsoftware.gitprocess.lib.GitLib
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.URIish
 import org.slf4j.Logger

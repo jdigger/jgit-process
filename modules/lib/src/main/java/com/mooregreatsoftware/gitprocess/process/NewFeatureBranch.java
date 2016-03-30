@@ -13,13 +13,16 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess;
+package com.mooregreatsoftware.gitprocess.process;
 
+import com.mooregreatsoftware.gitprocess.lib.Branch;
+import com.mooregreatsoftware.gitprocess.lib.BranchConfig;
+import com.mooregreatsoftware.gitprocess.lib.Branches;
+import com.mooregreatsoftware.gitprocess.lib.GitLib;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
-import java.io.File;
 
 /**
  * Creates a new feature branch.
@@ -85,8 +88,7 @@ public class NewFeatureBranch {
     private static Branch baseBranch(@Nonnull GitLib gitLib, @Nonnull Branches branches, @Nonnull Branch integrationBranch) {
         if (!branches.onParking() || integrationBranchContainsAllOfParking(gitLib, integrationBranch)) {
             return integrationBranch;
-        }
-        else {
+        } else {
             return branches.parking();
         }
     }
@@ -95,14 +97,6 @@ public class NewFeatureBranch {
     private static boolean integrationBranchContainsAllOfParking(@Nonnull GitLib gitLib, @Nonnull Branch integrationBranch) {
         final Branch parking = gitLib.branches().parking();
         return integrationBranch.containsAllOf(parking);
-    }
-
-
-    public static void main(String[] args) {
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-        root.setLevel(ch.qos.logback.classic.Level.TRACE);
-        final GitLib gitLib = ExecUtils.e(() -> GitLib.of(new File(".")));
-        NewFeatureBranch.newFeatureBranch(gitLib, "froble");
     }
 
 }

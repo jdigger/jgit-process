@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess;
+package com.mooregreatsoftware.gitprocess.lib;
 
 import org.eclipse.jgit.api.ListBranchCommand.ListMode;
 import org.eclipse.jgit.lib.Ref;
@@ -25,8 +25,6 @@ import java.util.Iterator;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.mooregreatsoftware.gitprocess.ExecUtils.e;
-import static com.mooregreatsoftware.gitprocess.ExecUtils.v;
 import static java.util.Optional.ofNullable;
 import static org.eclipse.jgit.lib.Constants.HEAD;
 
@@ -56,7 +54,7 @@ public class DefaultBranches implements Branches {
 
     @Nonnull
     private Optional<Ref> ref(String name) {
-        return e(() -> ofNullable(gitLib.repository().findRef(name)));
+        return ExecUtils.e(() -> ofNullable(gitLib.repository().findRef(name)));
     }
 
 
@@ -81,7 +79,7 @@ public class DefaultBranches implements Branches {
         if (branch(branchName).isPresent()) throw new BranchAlreadyExists(branchName);
 
         LOG.info("Creating branch \"{}\" based on \"{}\"", branchName, baseBranch.shortName());
-        v(() -> gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call());
+        ExecUtils.v(() -> gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call());
 
         return branch(branchName).get();
     }
@@ -92,7 +90,7 @@ public class DefaultBranches implements Branches {
     // TODO Add support for removing a remote branch
     public Branches removeBranch(@Nonnull Branch branch) {
         LOG.info("Removing branch \"{}\"", branch.shortName());
-        v(() -> gitLib.jgit().branchDelete().setBranchNames(branch.name()).setForce(true).call());
+        ExecUtils.v(() -> gitLib.jgit().branchDelete().setBranchNames(branch.name()).setForce(true).call());
         return this;
     }
 
@@ -102,7 +100,7 @@ public class DefaultBranches implements Branches {
     public Iterator<Branch> allBranches() {
         // this may get expensive if there are a LOT of branches; fortunately it can be implemented to not do so
         // without breaking the API
-        return e(() -> gitLib.jgit().branchList().setListMode(ListMode.ALL).call()).
+        return ExecUtils.e(() -> gitLib.jgit().branchList().setListMode(ListMode.ALL).call()).
             stream().
             map(ref -> branch(ref.getName()).get()).
             collect(Collectors.toList()).

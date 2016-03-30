@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess;
+package com.mooregreatsoftware.gitprocess.lib;
 
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.Repository;
@@ -26,9 +26,9 @@ import java.util.Iterator;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.mooregreatsoftware.gitprocess.ExecUtils.e;
-import static com.mooregreatsoftware.gitprocess.ExecUtils.v;
-import static com.mooregreatsoftware.gitprocess.StreamUtils.stream;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
+import static com.mooregreatsoftware.gitprocess.lib.StreamUtils.stream;
 import static java.util.Optional.empty;
 import static org.eclipse.jgit.lib.ConfigConstants.CONFIG_BRANCH_SECTION;
 import static org.eclipse.jgit.lib.ConfigConstants.CONFIG_KEY_MERGE;
@@ -122,7 +122,7 @@ public class StoredBranchConfig implements BranchConfig {
 
     @Nonnull
     private Optional<Branch> searchForBranch(Iterator<Branch> branches, String branchName) {
-        return stream(branches).
+        return StreamUtils.stream(branches).
             filter(branch -> branch.shortName().equals(branchName)).
             findFirst();
     }
@@ -136,7 +136,7 @@ public class StoredBranchConfig implements BranchConfig {
             LOG.warn("Do not have a \"{}\" branch: [{}]\n" +
                     "Fix with `git config {}.{} [branch_name]`",
                 branchName,
-                stream(branches).
+                StreamUtils.stream(branches).
                     map(Branch::shortName).
                     collect(Collectors.joining(", ")),
                 GIT_PROCESS_SECTION_NAME, INTEGRATION_BRANCH_KEY

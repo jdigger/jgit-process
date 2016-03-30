@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess;
+package com.mooregreatsoftware.gitprocess.lib;
 
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.StoredConfig;
@@ -25,8 +25,8 @@ import javax.annotation.Nonnull;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.mooregreatsoftware.gitprocess.ExecUtils.v;
-import static com.mooregreatsoftware.gitprocess.StreamUtils.stream;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
+import static com.mooregreatsoftware.gitprocess.lib.StreamUtils.stream;
 import static java.util.Optional.of;
 import static org.eclipse.jgit.lib.Constants.DEFAULT_REMOTE_NAME;
 
@@ -79,7 +79,7 @@ public class StoredRemoteConfig implements RemoteConfig {
             return of(remoteName);
         }
         else {
-            final Optional<String> foundRemoteName = stream(remoteNames()).
+            final Optional<String> foundRemoteName = StreamUtils.stream(remoteNames()).
                 filter(remote -> remote.equals(DEFAULT_REMOTE_NAME)).
                 findFirst();
 
@@ -88,7 +88,7 @@ public class StoredRemoteConfig implements RemoteConfig {
                 return foundRemoteName;
             }
             else {
-                final Optional<String> firstRemote = stream(remoteNames()).
+                final Optional<String> firstRemote = StreamUtils.stream(remoteNames()).
                     sorted().
                     findFirst();
 

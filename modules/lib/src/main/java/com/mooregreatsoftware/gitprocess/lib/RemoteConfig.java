@@ -13,23 +13,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess
+package com.mooregreatsoftware.gitprocess.lib;
 
-import spock.lang.Subject
+import org.eclipse.jgit.transport.URIish;
 
-@Subject(Branch)
-class BranchSpec extends GitSpecification {
+import javax.annotation.Nonnull;
+import java.util.Optional;
 
-    def "ContainsAllOf"() {
-        createFiles(".gitignore")
-        gitLib.commit("initial")
-        gitLib.branches().createBranch("newBranch", gitLib.branches().integrationBranch().get()).checkout()
-        createFiles("another_file.txt")
-        gitLib.commit("added another file")
+public interface RemoteConfig extends Config {
+    String REMOTE_NAME_KEY = "remoteName";
 
-        expect:
-        Branch.of(gitLib, "newBranch").containsAllOf('master')
-        !Branch.of(gitLib, "master").containsAllOf('newBranch')
-    }
+    boolean hasRemotes();
+
+    @Nonnull
+    Optional<String> remoteName();
+
+    @Nonnull
+    RemoteConfig remoteName(@Nonnull String remoteName);
+
+    @Nonnull
+    Iterable<String> remoteNames();
+
+    @Nonnull
+    RemoteConfig remoteAdd(String remoteName, URIish url);
 
 }

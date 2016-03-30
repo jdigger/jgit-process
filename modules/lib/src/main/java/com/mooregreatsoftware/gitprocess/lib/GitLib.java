@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess;
+package com.mooregreatsoftware.gitprocess.lib;
 
 import com.mooregreatsoftware.gitprocess.transport.GitTransportConfigCallback;
 import org.eclipse.jgit.api.Git;
@@ -33,8 +33,8 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Optional;
 
-import static com.mooregreatsoftware.gitprocess.ExecUtils.e;
-import static com.mooregreatsoftware.gitprocess.ExecUtils.v;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
 import static java.util.Optional.empty;
 
 /**

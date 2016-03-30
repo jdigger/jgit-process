@@ -13,7 +13,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess;
+package com.mooregreatsoftware.gitprocess.lib;
 
 import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
@@ -27,8 +27,7 @@ import javax.annotation.Nonnull;
 import java.util.Optional;
 import java.util.stream.StreamSupport;
 
-import static com.mooregreatsoftware.gitprocess.ExecUtils.e;
-import static com.mooregreatsoftware.gitprocess.StreamUtils.stream;
+import static com.mooregreatsoftware.gitprocess.lib.StreamUtils.stream;
 import static java.util.Optional.empty;
 import static org.eclipse.jgit.lib.Constants.R_HEADS;
 import static org.eclipse.jgit.lib.Constants.R_REFS;
@@ -74,7 +73,7 @@ public class Branch {
             throw new IllegalArgumentException("\"" + name + "\" is not a valid branch name");
         }
 
-        final Ref ref = e(() -> gitLib.repository().findRef(refName));
+        final Ref ref = ExecUtils.e(() -> gitLib.repository().findRef(refName));
 
         if (ref == null)
             throw new IllegalArgumentException(name + " is not a known reference name in " + gitLib.repository().getAllRefs());
@@ -117,7 +116,7 @@ public class Branch {
         final int idx = shortName.indexOf("/");
         if (idx > 0) { // may be a remote branch
             final String firstPart = shortName.substring(0, idx);
-            final boolean matchesARemote = stream(gitLib.remoteConfig().remoteNames()).
+            final boolean matchesARemote = StreamUtils.stream(gitLib.remoteConfig().remoteNames()).
                 anyMatch(remote -> remote.equalsIgnoreCase(firstPart));
 
             if (matchesARemote) {
@@ -197,7 +196,7 @@ public class Branch {
      */
     public boolean containsAllOf(@Nonnull Branch otherBranch) {
         LOG.debug("{}.containsAllOf({})", this, otherBranch);
-        return e(() -> {
+        return ExecUtils.e(() -> {
             final RevWalk walk = new RevWalk(gitLib.repository());
             try {
                 walk.setRetainBody(false);
@@ -205,9 +204,8 @@ public class Branch {
                 final ObjectId topOfOtherBranch = walk.parseCommit(otherBranch.objectId()).getId();
                 walk.markStart(topOfThisBranch);
                 return StreamSupport.stream(walk.spliterator(), false).
-                    anyMatch(tcommit -> topOfOtherBranch.equals(tcommit.getId()));
-            }
-            finally {
+                        anyMatch(tcommit -> topOfOtherBranch.equals(tcommit.getId()));
+            } finally {
                 walk.dispose();
             }
         });

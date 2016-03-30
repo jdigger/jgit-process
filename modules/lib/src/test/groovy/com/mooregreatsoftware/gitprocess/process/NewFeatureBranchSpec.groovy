@@ -13,8 +13,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess
+package com.mooregreatsoftware.gitprocess.process
 
+import com.mooregreatsoftware.gitprocess.lib.GitSpecification
 import spock.lang.Subject
 
 @Subject(NewFeatureBranch)

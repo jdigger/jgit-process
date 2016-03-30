@@ -1,7 +1,3 @@
-plugins {
-    id "us.kirchmeier.capsule" version "1.0.2"
-}
-
 description = 'Library for working with a sane Git process'
 
 apply plugin: 'groovy'
@@ -11,13 +7,9 @@ dependencies {
 
     compile 'org.slf4j:slf4j-api:1.7.19'
 
-    compile 'ch.qos.logback:logback-classic:1.1.6'
+    testRuntime 'ch.qos.logback:logback-classic:1.1.6'
 
     compile 'com.jcraft:jsch.agentproxy.jsch:0.0.9'
     compile 'com.jcraft:jsch.agentproxy.sshagent:0.0.9'
     compile 'com.jcraft:jsch.agentproxy.usocket-jna:0.0.9'
-}
-
-task mavenCapsule(type: MavenCapsule) {
-    applicationClass 'com.mooregreatsoftware.gitprocess.NewFeatureBranch'
 }

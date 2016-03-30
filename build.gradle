@@ -83,6 +83,7 @@ defaults {
     copyrightYears = '2016'
 }
 
+//noinspection GroovyAssignabilityCheck
 wrapper {
     gradleVersion = 2.12
 }

@@ -13,15 +13,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess
+package com.mooregreatsoftware.gitprocess.lib;
 
-import spock.lang.Specification
-
-abstract class GitSpecification extends Specification implements GitSpecHelper {
-
-    def cleanup() {
-        gitLib.workingDirectory().deleteDir()
-        gitLib.close()
-    }
-
+public interface Config {
+    String GIT_PROCESS_SECTION_NAME = "gitProcess";
 }
