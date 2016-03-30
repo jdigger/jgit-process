@@ -11,8 +11,17 @@ dependencies {
     compile project(":lib")
 
     compile 'ch.qos.logback:logback-classic:1.1.6'
+
+    compile 'net.sf.jopt-simple:jopt-simple:5.0'
 }
 
 task mavenCapsule(type: MavenCapsule) {
-    applicationClass 'com.mooregreatsoftware.gitprocess.process.NewFeatureBranch'
+    applicationClass 'com.mooregreatsoftware.gitprocess.bin.NewFeatureBranchRunner'
+
+    capsuleManifest {
+//        systemProperties['log4j.configuration'] = 'log4j.xml'
+//        args = ['--very-fancy']
+        minJavaVersion = '1.8.0'
+        repositories = ['jcenter', 'local', 'jmoore(http://dl.bintray.com/jmoore/java-lib)']
+    }
 }

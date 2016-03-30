@@ -15,27 +15,61 @@
  */
 package com.mooregreatsoftware.gitprocess.bin;
 
-import com.mooregreatsoftware.gitprocess.lib.ExecUtils;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
 import com.mooregreatsoftware.gitprocess.process.NewFeatureBranch;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import joptsimple.OptionParser;
+import joptsimple.OptionSet;
 
+import javax.annotation.Nonnull;
 import java.io.File;
+import java.io.IOException;
+
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
 
 /**
  * Creates a new feature branch.
  *
- * @see NewFeatureBranch#newFeatureBranch(GitLib, String)
+ * @see NewFeatureBranch#newFeatureBranch(GitLib, String, boolean)
  */
 @SuppressWarnings("ConstantConditions")
-public class NewFeatureBranchRunner {
+public class NewFeatureBranchRunner extends AbstractRunner {
 
-    public static void main(String[] args) {
-        ch.qos.logback.classic.Logger root = (ch.qos.logback.classic.Logger)LoggerFactory.getLogger(Logger.ROOT_LOGGER_NAME);
-        root.setLevel(ch.qos.logback.classic.Level.TRACE);
-        final GitLib gitLib = ExecUtils.e(() -> GitLib.of(new File(".")));
-        NewFeatureBranch.newFeatureBranch(gitLib, "froble");
+
+    @Nonnull
+    public String description() {
+        return "Create a new feature branch based on the integration branch.";
     }
+
+
+    @Nonnull
+    public String usageInfo() {
+        return "git new-fb [OPTIONS] 'branch_name'";
+    }
+
+
+    protected boolean shouldShowHelp(@Nonnull OptionSet optionSet) {
+        return optionSet.nonOptionArguments().size() != 1;
+    }
+
+
+    /**
+     * Override this to customize the OptionParser
+     */
+    @Nonnull
+    protected OptionParser createOptionParser() {
+        final OptionParser optionParser = super.createOptionParser();
+        optionParser.accepts("local", "Don't fetch the latest from remote");
+        return optionParser;
+    }
+
+
+    public static void main(String[] args) throws IOException {
+        final NewFeatureBranchRunner runner = new NewFeatureBranchRunner();
+        final OptionSet optionSet = runner.parse(args);
+
+        final GitLib gitLib = e(() -> GitLib.of(new File(".")));
+        NewFeatureBranch.newFeatureBranch(gitLib, (String)optionSet.nonOptionArguments().get(0), optionSet.has("logging"));
+    }
+
 
 }

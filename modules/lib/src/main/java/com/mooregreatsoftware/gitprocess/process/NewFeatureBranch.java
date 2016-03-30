@@ -27,7 +27,7 @@ import javax.annotation.Nonnull;
 /**
  * Creates a new feature branch.
  *
- * @see #newFeatureBranch(GitLib, String)
+ * @see #newFeatureBranch(GitLib, String, boolean)
  */
 @SuppressWarnings("ConstantConditions")
 public class NewFeatureBranch {
@@ -39,10 +39,11 @@ public class NewFeatureBranch {
      *
      * @param gitLib     the git library to use
      * @param branchName the name of the branch to create
+     * @param localOnly  do not try to fetch before creating the branch
      * @return the newly created branch
      * @see BranchConfig#integrationBranch()
      */
-    public static Branch newFeatureBranch(@Nonnull GitLib gitLib, @Nonnull String branchName) {
+    public static Branch newFeatureBranch(@Nonnull GitLib gitLib, @Nonnull String branchName, boolean localOnly) {
         if (gitLib == null) throw new IllegalArgumentException("gitLib == null");
         if (branchName == null) throw new IllegalArgumentException("branchName == null");
 
@@ -54,7 +55,7 @@ public class NewFeatureBranch {
 
         final Branch baseBranch = baseBranch(gitLib, branches, integrationBranch);
 
-        gitLib.fetch();
+        if (!localOnly) gitLib.fetch();
 
         LOG.info("Creating \"{}\" off of \"{}\"", branchName, baseBranch.shortName());
 

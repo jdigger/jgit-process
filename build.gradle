@@ -88,7 +88,3 @@ bintray {
 wrapper {
     gradleVersion = 2.12
 }
-
-//task mavenCapsule(type: MavenCapsule) {
-//    applicationClass 'com.mooregreatsoftware.gitprocess.NewFeatureBranch'
-//}
