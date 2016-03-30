@@ -23,7 +23,7 @@ import static java.util.Collections.emptySet
 class StoredRemoteConfigSpec extends GitSpecification {
 
     @Subject
-    def config = gitLib.remoteConfig()
+    def config = origin.remoteConfig()
 
 
     def "remotes"() {

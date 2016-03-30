@@ -15,6 +15,8 @@
  */
 package com.mooregreatsoftware.gitprocess.lib;
 
+import com.mooregreatsoftware.gitprocess.config.BranchConfig;
+
 import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.Optional;
@@ -101,6 +103,22 @@ public interface Branches {
      */
     @Nonnull
     Branch createBranch(@Nonnull String branchName, @Nonnull Branch baseBranch) throws BranchAlreadyExists;
+
+
+    /**
+     * Creates the given branch based on "baseBranchName".
+     *
+     * @param branchName     the name of the branch to create
+     * @param baseBranchName if branch to create this off of
+     * @return the new branch
+     * @throws IllegalArgumentException if the baseBranchName does not exist
+     * @throws BranchAlreadyExists      if the branch already exists
+     */
+    @Nonnull
+    default Branch createBranch(@Nonnull String branchName, @Nonnull String baseBranchName) throws BranchAlreadyExists {
+        final Branch baseBranch = branch(baseBranchName).orElseThrow(() -> new IllegalArgumentException("Could not find branch named \"" + baseBranchName + "\""));
+        return createBranch(branchName, baseBranch);
+    }
 
 
     /**

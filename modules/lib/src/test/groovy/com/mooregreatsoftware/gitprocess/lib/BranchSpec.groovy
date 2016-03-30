@@ -18,18 +18,87 @@ package com.mooregreatsoftware.gitprocess.lib
 import spock.lang.Subject
 
 @Subject(Branch)
+@SuppressWarnings("GroovyPointlessBoolean")
 class BranchSpec extends GitSpecification {
 
-    def "ContainsAllOf"() {
-        createFiles(".gitignore")
-        gitLib.commit("initial")
-        gitLib.branches().createBranch("newBranch", gitLib.branches().integrationBranch().get()).checkout()
-        createFiles("another_file.txt")
-        gitLib.commit("added another file")
+    def setup() {
+        createFiles(origin, ".gitignore").commit("initial")
+    }
+
+
+    def "contains all of"() {
+        createAndCheckoutBranch "newBranch", "master"
+        createCommit "another_file"
 
         expect:
-        Branch.of(gitLib, "newBranch").containsAllOf('master')
-        !Branch.of(gitLib, "master").containsAllOf('newBranch')
+        containsAllOf "newBranch", "master"
+        doesNotContainAllOf "master", "newBranch"
+    }
+
+
+    def "simpleName"() {
+        useLocal
+
+        expect:
+        branch("master").simpleName() == "master"
+        branch("origin/master").simpleName() == "master"
+        createBranch("not_a_remote/master", "master").simpleName() == "not_a_remote/master"
+    }
+
+
+    def "remoteName"() {
+        useLocal
+
+        when:
+        def master = branch("master")
+        def originMaster = branch("origin/master")
+        def differentBranch = createBranch("not_a_remote/master", "master")
+
+        then:
+        master.remoteName().isPresent() == false
+        originMaster.remoteName().isPresent() == true
+        originMaster.remoteName().get() == "origin"
+        differentBranch.remoteName().isPresent() == false
+    }
+
+
+    def "previous remote SHA"() {
+        useLocal
+
+        def sha
+
+        when:
+        sha = branch("master").previousRemoteOID()
+
+        then:
+        sha.isPresent() == false
+
+        when:
+        branch("master").recordLastSyncedAgainst()
+
+        useOrigin
+        createCommit "a"
+
+        useLocal
+        sha = branch("master").previousRemoteOID()
+
+        then:
+        sha.isPresent() == true
+    }
+
+    // **********************************************************************
+    //
+    // HELPERS
+    //
+    // **********************************************************************
+
+    void containsAllOf(String superBranch, String subBranch) {
+        assert currentLib.branches().branch(superBranch).get().containsAllOf(subBranch) == true
+    }
+
+
+    void doesNotContainAllOf(String superBranch, String subBranch) {
+        assert currentLib.branches().branch(superBranch).get().containsAllOf(subBranch) == false
     }
 
 }

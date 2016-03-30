@@ -15,29 +15,15 @@
  */
 package com.mooregreatsoftware.gitprocess.lib
 
+import groovy.transform.CompileStatic
 import org.eclipse.jgit.api.Git
 import org.eclipse.jgit.transport.URIish
 import org.slf4j.Logger
 import org.slf4j.LoggerFactory
 
+@CompileStatic
 trait GitSpecHelper {
     final Logger logger = LoggerFactory.getLogger(this.class)
-
-    private GitLib _gitLib
-
-
-    GitLib getGitLib() {
-        if (_gitLib == null) {
-            this._gitLib = createDefaultGitLib()
-        }
-        return _gitLib
-    }
-
-
-    GitLib createFiles(String... fileNames) {
-        return createFiles(gitLib, fileNames)
-    }
-
 
     GitLib createFiles(GitLib gitLib, String... fileNames) {
         for (String filename : fileNames) {
@@ -56,7 +42,7 @@ trait GitSpecHelper {
     }
 
 
-    GitLib cloneRepo(String branchName, String remoteName) {
+    GitLib cloneRepo(GitLib gitLib, String branchName, String remoteName) {
         def uri = new URIish("file://${gitLib.workingDirectory().absolutePath}")
         Git newJGit = Git.cloneRepository().
             setDirectory(createTmpDir()).
@@ -75,9 +61,6 @@ trait GitSpecHelper {
         return gl
     }
 
-//    Level logLevel() {
-//        return Level.DEBUG
-//    }
 
     GitLib createGitLib(File testDir) {
         if (!testDir.isDirectory()) testDir.delete()
@@ -97,8 +80,9 @@ trait GitSpecHelper {
 
 
     GitLib createDefaultGitLib() {
-        return createGitLib(createTmpDir())
+        createGitLib(createTmpDir())
     }
+
 
     File createTmpDir() {
         File tmpDir = File.createTempFile("git-process", "spec")
@@ -107,122 +91,29 @@ trait GitSpecHelper {
         return tmpDir
     }
 
+
+    String branchTip(GitLib gitLib, String branchName) {
+        gitLib.branches().branch(branchName).
+            orElseThrow({ new IllegalArgumentException("Could not find ${branchName}") }).
+            objectId().abbreviate(7).name()
+    }
+
+
+    void changeFile(GitLib gitLib, String filename, String contents) {
+        String c = contents ?: UUID.randomUUID().toString()
+        new File(gitLib.workingDirectory(), filename).write(c)
+    }
+
+
+    void changeFileAndAdd(GitLib gitLib, String filename, String contents) {
+        changeFile(gitLib, filename, contents)
+        gitLib.addFilepattern(filename)
+    }
+
+
+    void changeFileAndCommit(GitLib gitLib, String filename, String contents) {
+        changeFileAndAdd(gitLib, filename, contents)
+        gitLib.commit("${filename} - ${contents}")
+    }
+
 }
-
-/*
-  def gitprocess
-    if @gitprocess.nil? and respond_to?(:create_process)
-      @gitprocess = create_process(gitlib, :log_level => log_level)
-    end
-    @gitprocess
-  end
-
-
-  def gitlib
-    if @gitlib.nil?
-      if @gitprocess.nil?
-        @gitlib = create_gitlib(Dir.mktmpdir, :log_level => log_level)
-      else
-        @gitlib = gitprocess.gitlib
-      end
-    end
-    @gitlib
-  end
-
-
-  def config
-    gitlib.config
-  end
-
-
-  def remote
-    gitlib.remote
-  end
-
-
-  def commit_count
-    gitlib.log_count
-  end
-
-
-  def log_level
-    Logger::ERROR
-  end
-
-
-  def logger
-    gitlib.logger
-  end
-
-
-  def create_files(file_names)
-    GitRepoHelper.create_files gitlib, file_names
-  end
-
-
-  def self.create_files(gitlib, file_names)
-    Dir.chdir(gitlib.workdir) do |dir|
-      file_names.each do |fn|
-        gitlib.logger.debug { "Creating #{dir}/#{fn}" }
-        FileUtils.touch fn
-      end
-    end
-    gitlib.add(file_names)
-  end
-
-
-  def change_file(filename, contents, lib = gitlib)
-    Dir.chdir(lib.workdir) do
-      File.open(filename, 'w') { |f| f.puts contents }
-    end
-  end
-
-
-  def change_file_and_add(filename, contents, lib = gitlib)
-    change_file(filename, contents, lib)
-    lib.add(filename)
-  end
-
-
-  def change_file_and_commit(filename, contents, lib = gitlib)
-    change_file_and_add(filename, contents, lib)
-    lib.commit("#{filename} - #{contents}")
-  end
-
-
-  def create_gitlib(dir, opts)
-    git_lib = GitLib.new(dir, opts)
-    git_lib.config['user.email'] = 'test.user@test.com'
-    git_lib.config['user.name'] = 'test user'
-    git_lib
-  end
-
-
-  def clone_repo(branch='master', remote_name = 'origin', &block)
-    td = Dir.mktmpdir
-
-    logger.debug { "Cloning '#{gitlib.workdir}' to '#{td}'" }
-
-    gl = create_gitlib(td, :log_level => logger.level)
-    gl.remote.add(remote_name, "file://#{gitlib.workdir}")
-    gl.fetch(remote_name)
-
-    if branch == 'master'
-      gl.reset("#{remote_name}/#{branch}", :hard => true)
-    else
-      gl.checkout(branch, :new_branch => "#{remote_name}/#{branch}")
-    end
-
-    if block_given?
-      begin
-        block.arity < 1 ? gl.instance_eval(&block) : block.call(gl)
-      ensure
-        rm_rf(gl.workdir)
-      end
-      nil
-    else
-      gl
-    end
-  end
-
- */

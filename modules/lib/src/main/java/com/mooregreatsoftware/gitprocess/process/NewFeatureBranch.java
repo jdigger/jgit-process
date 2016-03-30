@@ -15,14 +15,17 @@
  */
 package com.mooregreatsoftware.gitprocess.process;
 
+import com.mooregreatsoftware.gitprocess.config.BranchConfig;
 import com.mooregreatsoftware.gitprocess.lib.Branch;
-import com.mooregreatsoftware.gitprocess.lib.BranchConfig;
 import com.mooregreatsoftware.gitprocess.lib.Branches;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
+import javaslang.control.Either;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+
+import static javaslang.control.Either.left;
 
 /**
  * Creates a new feature branch.
@@ -40,13 +43,10 @@ public class NewFeatureBranch {
      * @param gitLib     the git library to use
      * @param branchName the name of the branch to create
      * @param localOnly  do not try to fetch before creating the branch
-     * @return the newly created branch
+     * @return Left(error message), Right(the newly created branch)
      * @see BranchConfig#integrationBranch()
      */
-    public static Branch newFeatureBranch(@Nonnull GitLib gitLib, @Nonnull String branchName, boolean localOnly) {
-        if (gitLib == null) throw new IllegalArgumentException("gitLib == null");
-        if (branchName == null) throw new IllegalArgumentException("branchName == null");
-
+    public static Either<String, Branch> newFeatureBranch(@Nonnull GitLib gitLib, @Nonnull String branchName, boolean localOnly) {
         final Branches branches = gitLib.branches();
         final boolean onParking = branches.onParking();
 
@@ -60,7 +60,8 @@ public class NewFeatureBranch {
         LOG.info("Creating \"{}\" off of \"{}\"", branchName, baseBranch.shortName());
 
         final Branch newBranch = branches.createBranch(branchName, baseBranch);
-        newBranch.checkout();
+        final Either<String, Branch> checkoutRes = newBranch.checkout();
+        if (checkoutRes.isLeft()) return left(checkoutRes.getLeft());
 
         newBranch.upstream(integrationBranch);
 
@@ -68,7 +69,7 @@ public class NewFeatureBranch {
             branches.removeBranch(branches.parking());
         }
 
-        return newBranch;
+        return Either.right(newBranch);
     }
 
 

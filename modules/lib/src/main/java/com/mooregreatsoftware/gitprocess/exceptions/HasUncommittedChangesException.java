@@ -13,28 +13,17 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess.lib;
+package com.mooregreatsoftware.gitprocess.exceptions;
 
-import org.eclipse.jgit.transport.URIish;
+public class HasUncommittedChangesException extends GitProcessException {
+    @SuppressWarnings("ThrowableInstanceNeverThrown")
+    public static final HasUncommittedChangesException INSTANCE = new HasUncommittedChangesException();
 
-import javax.annotation.Nonnull;
-import java.util.Optional;
+    static {
+        INSTANCE.setStackTrace(new StackTraceElement[0]);
+    }
 
-public interface RemoteConfig extends Config {
-    String REMOTE_NAME_KEY = "remoteName";
-
-    boolean hasRemotes();
-
-    @Nonnull
-    Optional<String> remoteName();
-
-    @Nonnull
-    RemoteConfig remoteName(@Nonnull String remoteName);
-
-    @Nonnull
-    Iterable<String> remoteNames();
-
-    @Nonnull
-    RemoteConfig remoteAdd(String remoteName, URIish url);
-
+    private HasUncommittedChangesException() {
+        super("You have uncommitted changes");
+    }
 }

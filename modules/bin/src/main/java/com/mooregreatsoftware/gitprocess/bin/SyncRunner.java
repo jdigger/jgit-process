@@ -17,24 +17,26 @@ package com.mooregreatsoftware.gitprocess.bin;
 
 import com.mooregreatsoftware.gitprocess.lib.Branch;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
-import com.mooregreatsoftware.gitprocess.process.NewFeatureBranch;
+import com.mooregreatsoftware.gitprocess.process.Sync;
 import javaslang.control.Either;
 
 import javax.annotation.Nonnull;
 import java.io.IOException;
 
 /**
- * Creates a new feature branch.
+ * Syncs local changes with the server.
  *
- * @see NewFeatureBranch#newFeatureBranch(GitLib, String, boolean)
+ * @see Sync#sync(GitLib, boolean, boolean)
  */
 @SuppressWarnings("ConstantConditions")
-public class NewFeatureBranchRunner extends AbstractRunner {
+public class SyncRunner extends AbstractRunner {
 
     public static void main(String[] args) throws IOException {
+        final GitLib gitLib = createGitLib();
+
         int exitValue = run(args,
-            NewFeatureBranchOptions::create,
-            NewFeatureBranchRunner::newFeatureBranch
+            a -> SyncOptions.create(a, gitLib.generalConfig()),
+            opts -> SyncRunner.<String, Branch>doSync(gitLib, opts)
         );
 
         System.exit(exitValue);
@@ -42,8 +44,8 @@ public class NewFeatureBranchRunner extends AbstractRunner {
 
 
     @Nonnull
-    private static Either<String, Branch> newFeatureBranch(@Nonnull NewFeatureBranchOptions options) {
-        return NewFeatureBranch.newFeatureBranch(createGitLib(), options.branchName(), options.localOnly());
+    private static Either<String, Branch> doSync(@Nonnull GitLib gitLib, @Nonnull SyncOptions opts) {
+        return Sync.sync(gitLib, opts.merge(), opts.localOnly());
     }
 
 }

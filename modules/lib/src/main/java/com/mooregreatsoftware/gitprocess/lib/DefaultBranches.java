@@ -15,6 +15,8 @@
  */
 package com.mooregreatsoftware.gitprocess.lib;
 
+import com.mooregreatsoftware.gitprocess.config.BranchConfig;
+import javaslang.control.Try;
 import org.eclipse.jgit.api.ListBranchCommand.ListMode;
 import org.eclipse.jgit.lib.Ref;
 import org.slf4j.Logger;
@@ -25,7 +27,7 @@ import java.util.Iterator;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static java.util.Optional.ofNullable;
+import static java.util.Optional.empty;
 import static org.eclipse.jgit.lib.Constants.HEAD;
 
 public class DefaultBranches implements Branches {
@@ -43,18 +45,16 @@ public class DefaultBranches implements Branches {
     @Nonnull
     @Override
     public Optional<Branch> currentBranch() {
-        final Optional<Branch> branch = ref(HEAD).
+        return ref(HEAD).
             map(ref -> ref.getTarget().getName()).
             filter(name -> name.startsWith("refs/")).
             flatMap(this::branch);
-        LOG.debug("currentBranch(): {}", branch.map(Branch::shortName).orElse("NONE"));
-        return branch;
     }
 
 
     @Nonnull
     private Optional<Ref> ref(String name) {
-        return ExecUtils.e(() -> ofNullable(gitLib.repository().findRef(name)));
+        return Try.of(() -> gitLib.repository().findRef(name)).map(Optional::of).getOrElse(empty());
     }
 
 
@@ -79,7 +79,7 @@ public class DefaultBranches implements Branches {
         if (branch(branchName).isPresent()) throw new BranchAlreadyExists(branchName);
 
         LOG.info("Creating branch \"{}\" based on \"{}\"", branchName, baseBranch.shortName());
-        ExecUtils.v(() -> gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call());
+        Try.run(() -> gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call());
 
         return branch(branchName).get();
     }

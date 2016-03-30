@@ -13,8 +13,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess.lib;
+package com.mooregreatsoftware.gitprocess.lib.config;
 
+import com.mooregreatsoftware.gitprocess.config.BranchConfig;
+import com.mooregreatsoftware.gitprocess.config.RemoteConfig;
+import com.mooregreatsoftware.gitprocess.lib.Branch;
+import com.mooregreatsoftware.gitprocess.lib.Branches;
+import com.mooregreatsoftware.gitprocess.lib.StreamUtils;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;

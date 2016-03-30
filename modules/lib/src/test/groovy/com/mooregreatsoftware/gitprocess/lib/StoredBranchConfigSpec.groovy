@@ -15,15 +15,15 @@
  */
 package com.mooregreatsoftware.gitprocess.lib
 
+import com.mooregreatsoftware.gitprocess.config.BranchConfig
+import com.mooregreatsoftware.gitprocess.lib.config.StoredBranchConfig
 import spock.lang.Subject
 
-@SuppressWarnings("GroovyPointlessBoolean")
+@Subject(StoredBranchConfig)
+@SuppressWarnings(["GroovyPointlessBoolean", "SpellCheckingInspection"])
 class StoredBranchConfigSpec extends GitSpecification {
 
-    def remoteConfig = gitLib.remoteConfig()
-
-    @Subject
-    def config = gitLib.branchConfig()
+    def remoteConfig = origin.remoteConfig()
 
 
     def "local integration branch"() {
@@ -31,36 +31,30 @@ class StoredBranchConfigSpec extends GitSpecification {
         !remoteConfig.hasRemotes()
 
         when:
-        createFiles("fooble.txt")
-        gitLib.commit("initial with fooble")
+        createCommit "fooble"
 
         then:
-        config.integrationBranch().isPresent()
+        config.integrationBranch().isPresent() == true
         config.integrationBranch().get().shortName() == 'master'
 
         when:
-        def master = gitLib.branches().branch("master").get()
-        def anotherBranch = gitLib.branches().createBranch("another_branch", master)
-        gitLib.checkout(anotherBranch)
-        createFiles("fooble2.txt")
-        gitLib.commit("fooble2")
+        createAndCheckoutBranch "another_branch", "master"
+        createCommit "fooble2"
 
         then:
-        config.integrationBranch().isPresent()
-        config.integrationBranch().get().shortName() == 'master'
+        integrationBranchIs "master"
 
         when:
-        gitLib.branches().removeBranch(master)
+        origin.branches().removeBranch branch("master")
 
         then:
-        !config.integrationBranch().isPresent()
+        integrationBranchDoesNotExist
 
         when: 'set config'
-        config.integrationBranch(anotherBranch)
+        config.integrationBranch branch("another_branch")
 
         then:
-        config.integrationBranch().isPresent()
-        config.integrationBranch().get().shortName() == "another_branch"
+        integrationBranchIs "another_branch"
     }
 
 
@@ -69,39 +63,33 @@ class StoredBranchConfigSpec extends GitSpecification {
         !remoteConfig.hasRemotes()
 
         when:
-        createFiles("fooble.txt").commit("initial with fooble")
+        useOrigin
 
-        def originBranches = gitLib.branches()
-        def master = originBranches.branch("master").get()
+        createCommit "fooble"
 
-        originBranches.createBranch("another_branch", master).checkout()
-        createFiles("fooble2.txt")
-        gitLib.commit("fooble2")
+        createAndCheckoutBranch "another_branch", "master"
+        createCommit "fooble2"
 
-        def gl = cloneRepo('another_branch', 'origin')
+        local "another_branch"
+        useLocal
 
         then: 'cloned from a remote with a "master" branch, no config'
-        gl.remoteConfig().hasRemotes()
-        gl.branchConfig().integrationBranch().get().shortName() == 'origin/master'
+        local.remoteConfig().hasRemotes()
+        integrationBranchIs "origin/master"
 
         when: 'remove the remote "master" branch, no config'
-        originBranches.removeBranch(master)
-        gl.fetch()
+        removeRemoteBranch "master"
+        local.fetch()
 
         then:
-        !gl.branchConfig().integrationBranch().isPresent()
+        integrationBranchDoesNotExist
 
         when: 'set config'
-        gl.branchConfig().integrationBranch(gl.branches().branch("origin/another_branch").get())
-        gl.fetch()
+        config.integrationBranch branch("origin/another_branch")
+        local.fetch()
 
         then:
-        gl.branchConfig().integrationBranch().isPresent()
-        gl.branchConfig().integrationBranch().get().shortName() == "origin/another_branch"
-
-        cleanup:
-        gl?.workingDirectory()?.deleteDir()
-        gl?.close()
+        integrationBranchIs "origin/another_branch"
     }
 
 
@@ -110,40 +98,71 @@ class StoredBranchConfigSpec extends GitSpecification {
         remoteConfig.hasRemotes() == false
 
         when:
-        createFiles("fooble.txt").commit("initial with fooble")
-
-        def master = gitLib.branches().branch("master").get()
+        createCommit "fooble"
 
         and: "checkout a new branch, another_branch, and commit to it"
-        def anotherBranch = gitLib.branches().createBranch("another_branch", master)
-        anotherBranch.checkout()
-        createFiles("fooble2.txt").commit("fooble2")
+        createAndCheckoutBranch "another_branch", "master"
+        createCommit "fooble2"
 
         then: "another_branch does not have an upstream"
-        anotherBranch.upstream().isPresent() == false
+        upstreamDoesNotExist("another_branch")
 
         when: "set the upstream on another_branch to local master"
-        anotherBranch.upstream(master)
+        branch("another_branch").upstream branch("master")
 
         then: "another_branch's upstream is master"
-        anotherBranch.upstream().isPresent() == true
-        anotherBranch.upstream().get().shortName() == "master"
+        upstreamIs "another_branch", "master"
 
         when:
-        def gl = cloneRepo('master', 'origin')
-
-        def clonedMaster = gl.branches().branch("master").get()
+        useLocal
 
         then:
-        clonedMaster.upstream().isPresent() == false
+        upstreamDoesNotExist("master")
 
         when:
-        def originMaster = gl.branches().branch("origin/master").get()
-        clonedMaster.upstream(originMaster)
+        branch("master").upstream branch("origin/master")
 
         then:
-        clonedMaster.upstream().isPresent()
-        clonedMaster.upstream().get().shortName() == "origin/master"
+        upstreamIs "master", "origin/master"
+    }
+
+    // **********************************************************************
+    //
+    // HELPERS
+    //
+    // **********************************************************************
+
+
+    void integrationBranchIs(String branchName) {
+        assert config.integrationBranch().isPresent() == true
+        assert config.integrationBranch().get().shortName() == branchName
+    }
+
+
+    def getIntegrationBranchDoesNotExist() {
+        assert config.integrationBranch().isPresent() == false
+        1
+    }
+
+
+    void upstreamDoesNotExist(String branchName) {
+        assert branch(branchName).upstream().isPresent() == false
+    }
+
+
+    void upstreamIs(String branchName, String upstreamName) {
+        assert branch(branchName).upstream().isPresent() == true
+        assert branch(branchName).upstream().get().shortName() == upstreamName
+    }
+
+
+    void removeRemoteBranch(String branchName) {
+        origin.branches().removeBranch(origin.branches().branch(branchName).get())
+    }
+
+
+    BranchConfig getConfig() {
+        currentLib.branchConfig()
     }
 
 }

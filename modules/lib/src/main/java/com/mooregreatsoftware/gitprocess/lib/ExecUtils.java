@@ -18,6 +18,8 @@ package com.mooregreatsoftware.gitprocess.lib;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
 import java.io.IOException;
+import java.io.PrintWriter;
+import java.io.StringWriter;
 import java.util.concurrent.Callable;
 
 /**
@@ -68,6 +70,15 @@ public final class ExecUtils {
             if (e instanceof RuntimeException) throw (RuntimeException)e;
             else throw new RuntimeException(e);
         }
+    }
+
+
+    public static String toString(final Throwable throwable) {
+        final StringWriter sw = new StringWriter();
+        final PrintWriter pw = new PrintWriter(sw, true);
+        pw.println(throwable.toString());
+        throwable.printStackTrace(pw);
+        return sw.toString();
     }
 
 

@@ -13,8 +13,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package com.mooregreatsoftware.gitprocess.lib;
+package com.mooregreatsoftware.gitprocess.lib.config;
 
+import com.mooregreatsoftware.gitprocess.config.RemoteConfig;
+import com.mooregreatsoftware.gitprocess.lib.StreamUtils;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.URIish;
@@ -22,10 +24,13 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
+import java.net.URI;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
 import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
+import static java.util.Optional.empty;
 import static java.util.Optional.of;
 import static org.eclipse.jgit.lib.Constants.DEFAULT_REMOTE_NAME;
 
@@ -152,6 +157,29 @@ public class StoredRemoteConfig implements RemoteConfig {
 
     public interface RemoteAdder {
         org.eclipse.jgit.transport.RemoteConfig add(String remoteName, URIish uri) throws GitAPIException;
+    }
+
+
+    @Nonnull
+    @Override
+    public Optional<String> credentialHelper(@Nullable URI uri) {
+        if (uri != null) {
+            LOG.debug("Getting config credential.{}.helper", uri.toString());
+            final String uriCredHelper = storedConfig.getString("credential", uri.toString(), "helper");
+            if (uriCredHelper != null) {
+                LOG.debug("Found credential helper: {}", uriCredHelper);
+                return Optional.of(uriCredHelper);
+            }
+        }
+
+        LOG.debug("Getting config credential.helper");
+        final String globalCredHelper = storedConfig.getString("credential", uri.toString(), "helper");
+        if (globalCredHelper != null) {
+            LOG.debug("Found credential helper: {}", globalCredHelper);
+            return Optional.of(globalCredHelper);
+        }
+        LOG.debug("No credential helper found");
+        return empty();
     }
 
 }
