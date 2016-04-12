@@ -17,72 +17,135 @@ package com.mooregreatsoftware.gitprocess.bin;
 
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
 import javaslang.control.Either;
+import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-import javax.annotation.Nonnull;
 import java.io.File;
-import java.util.function.Function;
 
 import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
 
 /**
  * The base class for the CLI commands to extend from. Provides handling of standard functionality.
+ *
+ * @param <O> the Options type
+ * @param <V> the result type of "mainFunction"
  */
-public abstract class AbstractRunner {
+public abstract class AbstractRunner<O extends Options, M extends CharSequence, V> implements Runner {
+
+    private final GitLib gitLib;
+
+    protected O options;
 
 
-    public static final int STOP_ON_OPTIONS_CODE = 1;
-    public static final int STOP_ON_FUNCTION_CODE = 2;
+    protected AbstractRunner(GitLib gitLib, O options) {
+        this.gitLib = gitLib;
+        this.options = options;
+    }
+
+
+    public GitLib gitLib() {
+        return gitLib;
+    }
 
 
     /**
      * Returns in instance of {@link GitLib} set to the current directory (i.e., ".")
      */
-    @Nonnull
-    protected static GitLib createGitLib() {
-        return e(() -> GitLib.of(new File(".")));
+    @SuppressWarnings("RedundantCast")
+    protected static GitLib createCurrentDirGitLib() {
+        return (@NonNull GitLib)e(() -> GitLib.of(new File(".")));
     }
 
 
-    /**
-     * Gather the {@link Options} for the command, run it, and return the appropriate exit code for the program.
-     * <p>
-     * If there's a problem while gathering the options, print them to STDOUT and return 1.
-     *
-     * @param <O>             the Options type
-     * @param <V>             the result type of "mainFunction"
-     * @param args            the CLI arguments
-     * @param optionsFunction given the CLI args, returns either Left(message to print) or Right(options to pass to the main function)
-     * @param mainFunction    the main function to run
-     * @return 0 if successful; anything else if not
-     */
-    protected static <O extends Options, M extends CharSequence, V>
-    int run(@Nonnull String[] args,
-            @Nonnull Function<String[], Either<M, O>> optionsFunction,
-            @Nonnull Function<O, Either<M, V>> mainFunction) {
+    protected abstract Either<M, V> mainFunc(O options);
 
-        //noinspection UnnecessaryUnboxing
-        return optionsFunction.apply(args).
-            left(). // are the options finished?
-            map(CharSequence::toString).
-            peek(System.out::println). // print the message
-            map(m -> STOP_ON_OPTIONS_CODE). // exit value if options were consumed
-            toEither().
-            right(). // the options still need to be passed on
-            map(mainFunction).
-            map(AbstractRunner::valueToExitCode). // exit value for function
-            toEither().
-            getOrElseGet(l -> l).  // extract exit code
-            intValue();
+
+    interface B {
+        abstract class AbstractBuilder<O extends Options, M extends CharSequence> implements TheBuilder, GitLibSetter, CliArgs {
+            protected @MonotonicNonNull GitLib gitLib;
+            protected @MonotonicNonNull Either<M, O> eOptions;
+
+
+            protected abstract Either<M, O> options(String[] args);
+
+
+            @Override
+            @EnsuresNonNull("this.eOptions")
+            public TheBuilder cliArgs(String[] args) {
+                this.eOptions = options(args);
+                return this;
+            }
+
+
+            @Override
+            @EnsuresNonNull("this.gitLib")
+            public CliArgs gitLib(GitLib gitLib) {
+                this.gitLib = gitLib;
+                return this;
+            }
+
+
+            @Override
+            @SuppressWarnings("RedundantCast")
+            public Runner build() {
+                final GitLib gl = (@NonNull GitLib)this.gitLib;
+                final Either<M, O> eOpts = (@NonNull Either<M, O>)this.eOptions;
+                if (eOpts.isLeft()) {
+                    return new ErrorRunner<>(eOpts.getLeft());
+                }
+                return doBuild(gl, eOpts.get());
+            }
+
+
+            protected abstract Runner doBuild(GitLib gitLib, O options);
+
+
+            protected static class ErrorRunner<M extends CharSequence> implements Runner {
+                private final M errorMsg;
+
+
+                public ErrorRunner(M errorMsg) {
+                    this.errorMsg = errorMsg;
+                }
+
+
+                public int run() {
+                    System.out.println(errorMsg);
+                    return Runner.STOP_ON_OPTIONS_CODE;
+                }
+            }
+        }
+
+        interface TheBuilder {
+            Runner build();
+        }
+
+        interface GitLibSetter {
+            CliArgs gitLib(GitLib gitLib);
+        }
+
+        interface CliArgs {
+            TheBuilder cliArgs(String[] args);
+        }
     }
 
 
-    @Nonnull
-    private static <M extends CharSequence, V> Integer valueToExitCode(@Nonnull Either<M, V> value) {
+    @Override
+    public int run() {
+        if (options == null) return STOP_ON_OPTIONS_CODE;
+
+        final Either<M, V> result = mainFunc(options);
+        return valueToExitCode(result);
+    }
+
+
+    private static <M extends CharSequence, V> Integer valueToExitCode(Either<M, V> value) {
         return value.
             map(b -> 0).
             getOrElseGet(cs -> {
                     System.err.println(cs.toString());
-                    return STOP_ON_FUNCTION_CODE; // exit value if an issue happen running the function
+                    return STOP_ON_FUNCTION_CODE; // exit value if an issue happens running the function
                 }
             );
     }

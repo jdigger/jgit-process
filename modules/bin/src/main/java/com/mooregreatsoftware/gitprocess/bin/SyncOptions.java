@@ -17,15 +17,14 @@ package com.mooregreatsoftware.gitprocess.bin;
 
 import com.mooregreatsoftware.gitprocess.config.GeneralConfig;
 import javaslang.control.Either;
-import javaslang.control.Option;
 import joptsimple.OptionParser;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import java.io.PrintStream;
 
 import static java.util.Arrays.asList;
+import static javaslang.control.Either.left;
 import static javaslang.control.Either.right;
 
 /**
@@ -34,12 +33,11 @@ import static javaslang.control.Either.right;
 public class SyncOptions extends Options {
     private static final Logger LOG = LoggerFactory.getLogger(SyncOptions.class);
 
-    @Nonnull
     private final GeneralConfig generalConfig;
 
 
     @SuppressWarnings("unused")
-    protected SyncOptions(@Nonnull PrintStream printStream, @Nonnull GeneralConfig generalConfig) {
+    protected SyncOptions(PrintStream printStream, GeneralConfig generalConfig) {
         super(printStream);
         this.generalConfig = generalConfig;
     }
@@ -53,12 +51,10 @@ public class SyncOptions extends Options {
      * @param generalConfig git configuration to use
      * @return Left(message to print before exiting) or Right(the options)
      */
-    public static Either<String, SyncOptions> create(@Nonnull String[] args, @Nonnull PrintStream printStream, @Nonnull GeneralConfig generalConfig) {
+    public static Either<String, SyncOptions> create(String[] args, PrintStream printStream, GeneralConfig generalConfig) {
         final SyncOptions syncOptions = new SyncOptions(printStream, generalConfig);
-        final Option<String> msgOption = syncOptions.parse(args);
-        return msgOption.
-            <Either<String, SyncOptions>>map(Either::left).
-            getOrElse(right(syncOptions));
+        final String msgOption = syncOptions.parse(args);
+        return msgOption != null ? left(msgOption) : right(syncOptions);
     }
 
 
@@ -69,18 +65,16 @@ public class SyncOptions extends Options {
      * @param generalConfig git configuration to use
      * @return Left(message to print before exiting) or Right(the options)
      */
-    public static Either<String, SyncOptions> create(@Nonnull String[] args, @Nonnull GeneralConfig generalConfig) {
+    public static Either<String, SyncOptions> create(String[] args, GeneralConfig generalConfig) {
         return create(args, System.out, generalConfig);
     }
 
 
-    @Nonnull
     public String description() {
         return "Syncs local changes with the server.";
     }
 
 
-    @Nonnull
     public String usageInfo() {
         return "git sync [OPTIONS]";
     }
@@ -89,7 +83,7 @@ public class SyncOptions extends Options {
     /**
      * Override this to customize the OptionParser
      */
-    @Nonnull
+
     protected OptionParser createOptionParser() {
         final OptionParser optionParser = super.createOptionParser();
         optionParser.accepts("local", "Don't fetch or push with remote");

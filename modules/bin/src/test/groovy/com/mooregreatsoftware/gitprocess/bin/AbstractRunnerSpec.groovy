@@ -15,15 +15,20 @@
  */
 package com.mooregreatsoftware.gitprocess.bin
 
+import com.mooregreatsoftware.gitprocess.lib.GitLib
+import com.mooregreatsoftware.gitprocess.lib.GitSpecification
+import groovy.transform.CompileStatic
 import javaslang.control.Either
-import spock.lang.Specification
 import spock.lang.Unroll
 
-import static com.mooregreatsoftware.gitprocess.bin.AbstractRunner.STOP_ON_FUNCTION_CODE
-import static com.mooregreatsoftware.gitprocess.bin.AbstractRunner.STOP_ON_OPTIONS_CODE
-import static com.mooregreatsoftware.gitprocess.bin.AbstractRunner.run
+import static com.mooregreatsoftware.gitprocess.bin.AbstractRunner.B.AbstractBuilder
+import static com.mooregreatsoftware.gitprocess.bin.AbstractRunner.B.GitLibSetter
+import static com.mooregreatsoftware.gitprocess.bin.Runner.STOP_ON_FUNCTION_CODE
+import static com.mooregreatsoftware.gitprocess.bin.Runner.STOP_ON_OPTIONS_CODE
+import static javaslang.control.Either.left
+import static javaslang.control.Either.right
 
-class AbstractRunnerSpec extends Specification {
+class AbstractRunnerSpec extends GitSpecification {
 
     def setup() {
         System.setProperty("gitprocess.logging.testing", "true")
@@ -37,15 +42,10 @@ class AbstractRunnerSpec extends Specification {
 
     @Unroll
     def "run with #args -> #result"() {
-        given:
-        def exitValue
+        def runner = TestingAbstractRunner.builder().gitLib(origin).cliArgs(args as String[]).build()
 
         when:
-        exitValue = run(
-            args as String[],
-            { args -> TestOptions.createAsEither(args) },
-            { it.shouldFail() ? Either.left("something") : Either.right("worked") }
-        )
+        def exitValue = runner.run()
 
         then:
         exitValue == result
@@ -58,4 +58,37 @@ class AbstractRunnerSpec extends Specification {
         ["--fail"] || STOP_ON_FUNCTION_CODE
     }
 
+
+    @CompileStatic
+    static class TestingAbstractRunner extends AbstractRunner<TestOptions, String, String> {
+
+        protected TestingAbstractRunner(GitLib gitLib, TestOptions options) {
+            super(gitLib, options)
+        }
+
+
+        protected Either<String, String> mainFunc(TestOptions options) {
+            return options.shouldFail() ? left("something") : right("worked")
+        }
+
+
+        public static GitLibSetter builder() {
+            return new Builder()
+        }
+
+
+        @CompileStatic
+        public static class Builder extends AbstractBuilder<TestOptions, CharSequence> {
+
+            protected Either<CharSequence, TestOptions> options(String[] args) {
+                return TestOptions.createAsEither(args)
+            }
+
+
+            protected Runner doBuild(GitLib gitLib, TestOptions options) {
+                return new TestingAbstractRunner(gitLib, options)
+            }
+        }
+
+    }
 }

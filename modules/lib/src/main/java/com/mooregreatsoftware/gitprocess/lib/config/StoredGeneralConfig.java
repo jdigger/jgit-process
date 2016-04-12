@@ -20,35 +20,63 @@ import org.eclipse.jgit.lib.StoredConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
+import java.util.Optional;
 
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
-
-public class StoredGeneralConfig implements GeneralConfig {
+public class StoredGeneralConfig extends AbstractStoredConfig implements GeneralConfig {
     private static final Logger LOG = LoggerFactory.getLogger(StoredGeneralConfig.class);
 
-    @Nonnull
-    private final StoredConfig storedConfig;
 
-
-    public StoredGeneralConfig(@Nonnull StoredConfig storedConfig) {
-        this.storedConfig = storedConfig;
+    public StoredGeneralConfig(StoredConfig storedConfig) {
+        super(storedConfig);
     }
 
 
     @Override
     public boolean defaultRebaseSync() {
-        return storedConfig.getBoolean(GIT_PROCESS_SECTION_NAME, null, DEFAULT_REBASE_SYNC_KEY, true);
+        return getBoolean(GIT_PROCESS_SECTION_NAME, null, DEFAULT_REBASE_SYNC_KEY, true);
     }
 
 
-    @Nonnull
     @Override
     public GeneralConfig defaultRebaseSync(boolean defaultRebaseSync) {
         LOG.debug("Setting default rebase sync to {}", defaultRebaseSync);
-        storedConfig.setBoolean(GIT_PROCESS_SECTION_NAME, null, DEFAULT_REBASE_SYNC_KEY, defaultRebaseSync);
-        v(storedConfig::save);
+        setBoolean(GIT_PROCESS_SECTION_NAME, null, DEFAULT_REBASE_SYNC_KEY, defaultRebaseSync);
         return this;
     }
 
+
+    @Override
+    public Optional<String> oauthToken() {
+        // TODO: Enhance to look in the git-credential-helper
+        final String token = getString(GIT_PROCESS_SECTION_NAME, null, OAUTH_TOKEN_KEY);
+        return Optional.ofNullable(token);
+    }
+
+
+    @Override
+    public GeneralConfig oauthToken(String oauthToken) {
+        LOG.info("Saving the OAuth token");
+        setString(GIT_PROCESS_SECTION_NAME, null, OAUTH_TOKEN_KEY, oauthToken);
+        return this;
+    }
+
+
+    @Override
+    public Optional<String> username() {
+        // TODO: Enhance to look in the git-credential-helper
+        String username = getString(GIT_PROCESS_SECTION_NAME, null, USERNAME_KEY);
+        if (username == null) {
+            // some programs save the user in this config property
+            username = getString("github", null, "user");
+        }
+        return Optional.ofNullable(username);
+    }
+
+
+    @Override
+    public GeneralConfig username(String username) {
+        LOG.info("Setting the user name to {}", username);
+        setString(GIT_PROCESS_SECTION_NAME, null, USERNAME_KEY, username);
+        return this;
+    }
 }

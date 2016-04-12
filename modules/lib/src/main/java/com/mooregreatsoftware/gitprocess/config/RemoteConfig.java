@@ -21,47 +21,62 @@ import org.eclipse.jgit.transport.URIish;
 import javax.annotation.Nonnull;
 import javax.annotation.Nullable;
 import java.net.URI;
-import java.util.Optional;
 
 public interface RemoteConfig extends Config {
     String REMOTE_NAME_KEY = "remoteName";
 
-    default Optional<String> remoteBranchName(@Nonnull String branchName) {
-        return remoteName().map(rn -> rn + "/" + branchName);
+    @Nullable
+    default String remoteBranchName(String branchName) {
+        final String remoteName = remoteName();
+        if (remoteName == null) return null;
+        return remoteName + "/" + branchName;
     }
 
     boolean hasRemotes();
 
-    @Nonnull
-    Optional<String> remoteName();
+    @Nullable
+    String remoteName();
 
-    @Nonnull
     RemoteConfig remoteName(@Nonnull String remoteName);
 
-    @Nonnull
     Iterable<String> remoteNames();
 
-    @Nonnull
     RemoteConfig remoteAdd(String remoteName, URIish url);
 
 
     /**
      * Returns the credential helper that has been defined for the given URI, or the global one if "uri" is null or there is not a specific match for the URI
      *
-     * @return empty() if there is no global credential helper defined
+     * @return null if there is no global credential helper defined
      */
-    @Nonnull
-    Optional<String> credentialHelper(@Nullable URI uri);
+    @Nullable
+    String credentialHelper(@Nullable URI uri);
 
 
     /**
      * Returns the global credential helper
      *
-     * @return empty() if there is no global credential helper defined
+     * @return null if there is no global credential helper defined
      */
-    @Nonnull
-    default Optional<String> credentialHelper() {
+    @Nullable
+    default String credentialHelper() {
         return credentialHelper(null);
     }
+
+
+    /**
+     * The name of the repository for the current "remote". For example, "jdigger/jgit-process"
+     */
+    @Nullable
+    String repositoryName();
+
+    /**
+     * The URL for the named remote
+     *
+     * @param remoteName the name of the remote (e.g., "origin")
+     * @return null if it can not be found
+     */
+    @Nullable
+    URI remoteUrl(String remoteName);
 
 }

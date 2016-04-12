@@ -20,7 +20,6 @@ import com.mooregreatsoftware.gitprocess.lib.GitLib;
 import com.mooregreatsoftware.gitprocess.process.NewFeatureBranch;
 import javaslang.control.Either;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 
 /**
@@ -28,22 +27,37 @@ import java.io.IOException;
  *
  * @see NewFeatureBranch#newFeatureBranch(GitLib, String, boolean)
  */
-@SuppressWarnings("ConstantConditions")
-public class NewFeatureBranchRunner extends AbstractRunner {
+public class NewFeatureBranchRunner extends AbstractRunner<NewFeatureBranchOptions, String, Branch> {
 
-    public static void main(String[] args) throws IOException {
-        int exitValue = run(args,
-            NewFeatureBranchOptions::create,
-            NewFeatureBranchRunner::newFeatureBranch
-        );
-
-        System.exit(exitValue);
+    private NewFeatureBranchRunner(GitLib gitLib, NewFeatureBranchOptions options) {
+        super(gitLib, options);
     }
 
 
-    @Nonnull
-    private static Either<String, Branch> newFeatureBranch(@Nonnull NewFeatureBranchOptions options) {
-        return NewFeatureBranch.newFeatureBranch(createGitLib(), options.branchName(), options.localOnly());
+    public static AbstractRunner.B.GitLibSetter builder() {
+        return new B.AbstractBuilder<NewFeatureBranchOptions, String>() {
+            @Override
+            protected Either<String, NewFeatureBranchOptions> options(String[] args) {
+                return NewFeatureBranchOptions.create(args);
+            }
+
+
+            @Override
+            protected Runner doBuild(GitLib gitLib, NewFeatureBranchOptions options) {
+                return new NewFeatureBranchRunner(gitLib, options);
+            }
+        };
+    }
+
+
+    @Override
+    protected Either<String, Branch> mainFunc(NewFeatureBranchOptions options) {
+        return NewFeatureBranch.newFeatureBranch(gitLib(), options.branchName(), options.localOnly());
+    }
+
+
+    public static void main(String[] args) throws IOException {
+        System.exit(builder().gitLib(createCurrentDirGitLib()).cliArgs(args).build().run());
     }
 
 }

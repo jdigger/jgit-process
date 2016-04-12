@@ -17,6 +17,8 @@ package com.mooregreatsoftware.gitprocess.lib;
 
 import com.mooregreatsoftware.gitprocess.config.BranchConfig;
 import javaslang.control.Try;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.eclipse.jgit.api.ListBranchCommand.ListMode;
 import org.eclipse.jgit.lib.Ref;
 import org.slf4j.Logger;
@@ -24,16 +26,19 @@ import org.slf4j.LoggerFactory;
 
 import javax.annotation.Nonnull;
 import java.util.Iterator;
-import java.util.Optional;
+import java.util.List;
 import java.util.stream.Collectors;
 
-import static java.util.Optional.empty;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
 import static org.eclipse.jgit.lib.Constants.HEAD;
+import static org.eclipse.jgit.lib.Constants.R_REFS;
 
+@SuppressWarnings({"RedundantCast", "RedundantTypeArguments"})
 public class DefaultBranches implements Branches {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultBranches.class);
 
-    @Nonnull
+    @NonNull
     private final GitLib gitLib;
 
 
@@ -42,33 +47,32 @@ public class DefaultBranches implements Branches {
     }
 
 
-    @Nonnull
     @Override
-    public Optional<Branch> currentBranch() {
-        return ref(HEAD).
-            map(ref -> ref.getTarget().getName()).
-            filter(name -> name.startsWith("refs/")).
-            flatMap(this::branch);
+    public @Nullable Branch currentBranch() {
+        final Ref ref = ref(HEAD);
+        if (ref == null) return null;
+        final String targetName = ref.getTarget().getName();
+        return targetName.startsWith(R_REFS) ? branch(targetName) : null;
     }
 
 
-    @Nonnull
-    private Optional<Ref> ref(String name) {
-        return Try.of(() -> gitLib.repository().findRef(name)).map(Optional::of).getOrElse(empty());
+    private @Nullable Ref ref(String name) {
+        return Try.<@Nullable Ref>of(() -> gitLib.repository().findRef(name)).
+            getOrElse((Ref)null);
     }
 
 
-    @Nonnull
+    @NonNull
     @Override
     public BranchConfig config() {
         return gitLib.branchConfig();
     }
 
 
-    @Nonnull
     @Override
-    public Optional<Branch> branch(@Nonnull String branchName) {
-        return ref(branchName).map(ref -> Branch.of(gitLib, ref.getName()));
+    public @Nullable Branch branch(@Nonnull String branchName) {
+        final Ref ref = ref(branchName);
+        return (ref == null) ? null : Branch.of(gitLib, ref.getName());
     }
 
 
@@ -76,12 +80,12 @@ public class DefaultBranches implements Branches {
     @Override
     // TODO don't allow creating a remote branch "shadow"
     public Branch createBranch(@Nonnull String branchName, @Nonnull Branch baseBranch) throws BranchAlreadyExists {
-        if (branch(branchName).isPresent()) throw new BranchAlreadyExists(branchName);
+        if (branch(branchName) != null) throw new BranchAlreadyExists(branchName);
 
         LOG.info("Creating branch \"{}\" based on \"{}\"", branchName, baseBranch.shortName());
-        Try.run(() -> gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call());
+        v(() -> gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call());
 
-        return branch(branchName).get();
+        return (@NonNull Branch)branch(branchName);
     }
 
 
@@ -90,21 +94,20 @@ public class DefaultBranches implements Branches {
     // TODO Add support for removing a remote branch
     public Branches removeBranch(@Nonnull Branch branch) {
         LOG.info("Removing branch \"{}\"", branch.shortName());
-        ExecUtils.v(() -> gitLib.jgit().branchDelete().setBranchNames(branch.name()).setForce(true).call());
+        v(() -> gitLib.jgit().branchDelete().setBranchNames(branch.name()).setForce(true).call());
         return this;
     }
 
 
     @Nonnull
     @Override
-    public Iterator<Branch> allBranches() {
+    public Iterator<@NonNull Branch> allBranches() {
         // this may get expensive if there are a LOT of branches; fortunately it can be implemented to not do so
         // without breaking the API
-        return ExecUtils.e(() -> gitLib.jgit().branchList().setListMode(ListMode.ALL).call()).
+        return ((@NonNull List<Ref>)e(() -> gitLib.jgit().branchList().setListMode(ListMode.ALL).call())).
             stream().
-            map(ref -> branch(ref.getName()).get()).
-            collect(Collectors.toList()).
-            listIterator();
+            map(ref -> (@NonNull Branch)branch(ref.getName())).
+            collect(Collectors.<@NonNull Branch>toList()).<@NonNull Branch>listIterator();
     }
 
 }

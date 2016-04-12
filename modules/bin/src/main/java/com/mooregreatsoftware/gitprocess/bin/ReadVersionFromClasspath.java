@@ -16,14 +16,14 @@
 package com.mooregreatsoftware.gitprocess.bin;
 
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import java.util.Optional;
+import javax.annotation.Nullable;
+import java.net.URL;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
-
-import static java.util.Optional.empty;
 
 public class ReadVersionFromClasspath {
     private static final Logger LOG = LoggerFactory.getLogger(ReadVersionFromClasspath.class);
@@ -32,31 +32,38 @@ public class ReadVersionFromClasspath {
     /**
      * Extract from the JAR file name that is providing the {@link GitLib} class the version information.
      *
-     * @return empty() if it can't derive the version
+     * @return null if it can't derive the version
      */
-    public static Optional<String> version() {
+    @Nullable
+    @SuppressWarnings("RedundantCast")
+    public static String version() {
         final String classFile = GitLib.class.getName().replace('.', '/') + ".class";
 
-        @SuppressWarnings("ConstantConditions")
-        final String filename = GitLib.class.getClassLoader().getResource(classFile).getFile();
+        final ClassLoader classLoader = (@NonNull ClassLoader)GitLib.class.getClassLoader();
+        final URL resource = classLoader.getResource(classFile);
+        if (resource == null) {
+            LOG.warn("Could not find {} in the classloader", classFile);
+            return null;
+        }
+        final String filename = resource.getFile();
 
         return versionFromJarFilename(filename, classFile);
     }
 
 
-    static Optional<String> versionFromJarFilename(String filename, String classFile) {
+    @Nullable
+    static String versionFromJarFilename(String filename, String classFile) {
         // What could be simpler?
         //
         // See the test case for details on how this is expected to work
         final Pattern pattern = Pattern.compile("^.*?\\-?(?<prefix>(?<version>\\d+\\.\\d\\.\\d(?:\\-[^/\\\\]*?)?)?\\.jar!)?/" + classFile + "$");
         final Matcher matcher = pattern.matcher(filename);
         if (matcher.matches()) {
-            if (matcher.group("prefix") == null) return empty();
-            return Optional.of(matcher.group("version"));
+            return matcher.group("prefix") != null ? matcher.group("version") : null;
         }
         else {
             LOG.warn("Do not know how to parse \"{}\" for its version information", filename);
-            return empty();
+            return null;
         }
     }
 

@@ -21,6 +21,8 @@ import javaslang.control.Either
 import org.eclipse.jgit.lib.AnyObjectId
 import org.eclipse.jgit.lib.ObjectId
 import org.eclipse.jgit.revwalk.RevWalk
+import org.spockframework.util.StringMessagePrintStream
+import org.spockframework.util.TeePrintStream
 import spock.lang.Specification
 
 import java.util.function.Function
@@ -35,9 +37,33 @@ abstract class GitSpecification extends Specification implements GitSpecHelper {
     private GitLib _local
     private GitLib _current_lib
 
+    private StringBuilder _stdoutBuilder
+    private PrintStream oldSTDOUT
+
+
+    @CompileStatic
+    def setup() {
+        oldSTDOUT = System.out
+        def stdoutBuilder = new StringBuilder()
+        System.out = new TeePrintStream(oldSTDOUT, new StringMessagePrintStream() {
+            @Override
+            protected void printed(String message) {
+                stdoutBuilder.append(message)
+            }
+        })
+        _stdoutBuilder = stdoutBuilder
+    }
+
+
+    @CompileStatic
+    String getStdout() {
+        return _stdoutBuilder.toString()
+    }
+
 
     @CompileStatic
     def cleanup() {
+        System.out = oldSTDOUT
         if (_origin != null) {
             _origin.workingDirectory().deleteDir()
             _origin.close()
@@ -131,9 +157,7 @@ abstract class GitSpecification extends Specification implements GitSpecHelper {
 
     @CompileStatic
     Branch branch(String branch) {
-        currentLib.branches().
-            branch(branch).
-            orElseThrow({ new IllegalStateException("Could not find ${branch}") })
+        currentLib.branches().branch(branch)
     }
 
 
@@ -141,7 +165,6 @@ abstract class GitSpecification extends Specification implements GitSpecHelper {
     Branch checkout(String branch) {
         currentLib.branches().
             branch(branch).
-            orElseThrow({ new IllegalStateException("Could not find ${branch}") }).
             checkout().
             getOrElseThrow({ new IllegalStateException(it as String) } as Function)
     }
@@ -156,7 +179,7 @@ abstract class GitSpecification extends Specification implements GitSpecHelper {
 
     @CompileStatic
     String integrationBranchName() {
-        currentLib.branches().integrationBranch().get().shortName()
+        currentLib.branches().integrationBranch().shortName()
     }
 
 
@@ -198,20 +221,31 @@ abstract class GitSpecification extends Specification implements GitSpecHelper {
     }
 
 
+    @CompileStatic
+    void createFakeRemoteBranch(String remoteBranchName) {
+        def updateRef = origin.jgit().repository.updateRef("refs/remotes/${remoteBranchName}")
+        def branches = origin.branches()
+        def currentBranch = branches.currentBranch()
+        def objectId = currentBranch.objectId()
+        updateRef.newObjectId = objectId
+        updateRef.update()
+    }
+
+
     void fileExists(String filename) {
         assert new File(currentLib.workingDirectory() as File, filename).exists()
     }
 
 
     def getParkingDoesNotExist() {
-        assert currentLib.branches().branch(PARKING_BRANCH_NAME).isPresent() == false
+        assert currentLib.branches().branch(PARKING_BRANCH_NAME) == null
         true
     }
 
 
     @CompileStatic
     void resetHard(ref) {
-        def resetHard = currentLib.branches().currentBranch().get().resetHard(ref as String)
+        def resetHard = currentLib.branches().currentBranch().resetHard(ref as String)
         if (resetHard.isPresent()) throw new IllegalStateException(resetHard.get())
     }
 
@@ -219,7 +253,7 @@ abstract class GitSpecification extends Specification implements GitSpecHelper {
     void localContainsCommits(List<String> commitNames) {
         final RevWalk walk = new RevWalk(local.jgit().repository)
         try {
-            def topOfThisBranch = walk.parseCommit(local.branches().currentBranch().get().objectId())
+            def topOfThisBranch = walk.parseCommit(local.branches().currentBranch().objectId())
             walk.markStart(topOfThisBranch)
 
             def unfoundCommits = new ArrayList<String>(commitNames)
@@ -243,7 +277,7 @@ abstract class GitSpecification extends Specification implements GitSpecHelper {
     void localDoesNotContainCommits(List<String> commitNames) {
         final RevWalk walk = new RevWalk(local.jgit().repository)
         try {
-            def topOfThisBranch = walk.parseCommit(local.branches().currentBranch().get().objectId())
+            def topOfThisBranch = walk.parseCommit(local.branches().currentBranch().objectId())
             walk.markStart(topOfThisBranch)
 
             def unfoundCommits = new ArrayList<String>(commitNames)

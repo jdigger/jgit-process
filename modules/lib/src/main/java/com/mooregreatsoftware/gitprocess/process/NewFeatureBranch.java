@@ -51,7 +51,9 @@ public class NewFeatureBranch {
         final boolean onParking = branches.onParking();
 
         final BranchConfig branchConfig = gitLib.branchConfig();
-        final Branch integrationBranch = branchConfig.integrationBranch().orElseThrow(() -> new IllegalStateException("No integration branch"));
+        final Branch integrationBranch = branchConfig.integrationBranch();
+        if (integrationBranch == null)
+            throw new IllegalStateException("No integration branch");
 
         final Branch baseBranch = baseBranch(gitLib, branches, integrationBranch);
 

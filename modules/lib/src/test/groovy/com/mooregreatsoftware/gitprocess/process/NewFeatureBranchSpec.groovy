@@ -44,7 +44,7 @@ class NewFeatureBranchSpec extends GitSpecification {
         newBranch.shortName() == "test_branch"
 
         and: "the branch was created off of origin/master"
-        def integrationBranch = local.branches().integrationBranch().get()
+        def integrationBranch = local.branches().integrationBranch()
         newBranch.objectId() == integrationBranch.objectId()
         integrationBranch.shortName() == "origin/master"
     }
@@ -119,7 +119,7 @@ class NewFeatureBranchSpec extends GitSpecification {
 
         then:
         newBranch.shortName() == "test_branch"
-        branches.currentBranch().get() == newBranch
+        branches.currentBranch() == newBranch
 
         and:
         parkingDoesNotExist

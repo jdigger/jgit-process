@@ -16,33 +16,35 @@
 package com.mooregreatsoftware.gitprocess.lib;
 
 import javaslang.control.Either;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.lib.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
-
 import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
 import static javaslang.control.Either.left;
 import static javaslang.control.Either.right;
 
+@SuppressWarnings("RedundantCast")
 public class Merger {
     private static final Logger LOG = LoggerFactory.getLogger(Merger.class);
 
 
     public static Either<String, SuccessfulMerge> merge(GitLib gitLib, Branch mergeBranch) {
-        final Branch currentBranch = gitLib.branches().currentBranch().get();
+        final Branch currentBranch = gitLib.branches().currentBranch();
+
+        if (currentBranch == null) return left("There is no branch checked out");
 
         final ObjectId startCurrentOid = currentBranch.objectId();
         final ObjectId startIntegrationOid = mergeBranch.objectId();
 
         LOG.debug("Merging \"{}\"({}) with \"{}\"({})", currentBranch.shortName(), startCurrentOid.abbreviate(7).name(), mergeBranch.shortName(), startIntegrationOid.abbreviate(7).name());
-        final MergeResult mergeResult = e(() ->
+        final MergeResult mergeResult = (@NonNull MergeResult)e(() ->
             gitLib.jgit().merge().
                 include(mergeBranch.objectId()).
                 setCommit(true).
-                setMessage("Sync merge from " + mergeBranch.shortName() + " into " + currentBranch.shortName()).
+                setMessage("Sync merge from " + mergeBranch.shortName() + " into " + (currentBranch != null ? currentBranch.shortName() : null)).
                 call());
 
         return mergeResult.getMergeStatus().isSuccessful() ?
@@ -52,11 +54,10 @@ public class Merger {
 
 
     public static class SuccessfulMerge {
-        @Nonnull
         private final MergeResult mergeResult;
 
 
-        public SuccessfulMerge(@Nonnull MergeResult mergeResult) {
+        public SuccessfulMerge(MergeResult mergeResult) {
             this.mergeResult = mergeResult;
         }
 

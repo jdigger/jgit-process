@@ -25,6 +25,7 @@ import com.jcraft.jsch.agentproxy.RemoteIdentityRepository;
 import com.jcraft.jsch.agentproxy.USocketFactory;
 import com.jcraft.jsch.agentproxy.connector.SSHAgentConnector;
 import com.jcraft.jsch.agentproxy.usocket.JNAUSocketFactory;
+import org.checkerframework.checker.nullness.qual.NonNull;
 import org.eclipse.jgit.transport.JschConfigSessionFactory;
 import org.eclipse.jgit.transport.OpenSshConfig;
 import org.eclipse.jgit.util.FS;
@@ -59,6 +60,7 @@ public class SshAgentJschConfigSessionFactory extends JschConfigSessionFactory {
 
 
     @Override
+    @SuppressWarnings("RedundantCast")
     protected JSch createDefaultJSch(FS fs) throws JSchException {
         final JSch jsch = super.createDefaultJSch(fs);
 
@@ -71,7 +73,7 @@ public class SshAgentJschConfigSessionFactory extends JschConfigSessionFactory {
             }
         }
         catch (AgentProxyException e) {
-            LOG.error("Could not establish a connection to ssh-agent: {}", e.getMessage());
+            LOG.error("Could not establish a connection to ssh-agent: {}", (@NonNull String)e.getMessage());
         }
 
         return jsch;

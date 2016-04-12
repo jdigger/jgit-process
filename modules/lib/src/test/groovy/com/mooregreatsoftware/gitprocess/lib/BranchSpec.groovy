@@ -15,6 +15,7 @@
  */
 package com.mooregreatsoftware.gitprocess.lib
 
+import groovy.transform.CompileStatic
 import spock.lang.Subject
 
 @Subject(Branch)
@@ -71,7 +72,7 @@ class BranchSpec extends GitSpecification {
         sha = branch("master").previousRemoteOID()
 
         then:
-        sha.isPresent() == false
+        sha == null
 
         when:
         branch("master").recordLastSyncedAgainst()
@@ -83,7 +84,7 @@ class BranchSpec extends GitSpecification {
         sha = branch("master").previousRemoteOID()
 
         then:
-        sha.isPresent() == true
+        sha != null
     }
 
     // **********************************************************************
@@ -93,12 +94,12 @@ class BranchSpec extends GitSpecification {
     // **********************************************************************
 
     void containsAllOf(String superBranch, String subBranch) {
-        assert currentLib.branches().branch(superBranch).get().containsAllOf(subBranch) == true
+        assert currentLib.branches().branch(superBranch).containsAllOf(subBranch) == true
     }
 
 
     void doesNotContainAllOf(String superBranch, String subBranch) {
-        assert currentLib.branches().branch(superBranch).get().containsAllOf(subBranch) == false
+        assert currentLib.branches().branch(superBranch).containsAllOf(subBranch) == false
     }
 
 }

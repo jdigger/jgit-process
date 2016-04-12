@@ -17,13 +17,15 @@ package com.mooregreatsoftware.gitprocess.config;
 
 import com.mooregreatsoftware.gitprocess.lib.Config;
 
-import javax.annotation.Nonnull;
+import java.util.Optional;
 
 /**
  * General configuration.
  */
 public interface GeneralConfig extends Config {
     String DEFAULT_REBASE_SYNC_KEY = "defaultRebaseSync";
+    String OAUTH_TOKEN_KEY = "oauthToken";
+    String USERNAME_KEY = "username";
 
     /**
      * Should it default to using rebase instead of merge?
@@ -38,8 +40,34 @@ public interface GeneralConfig extends Config {
      *
      * @see #defaultRebaseSync()
      */
-    @Nonnull
     @SuppressWarnings("unused")
     GeneralConfig defaultRebaseSync(boolean defaultRebaseSync);
+
+    /**
+     * The OAuth token to use for API access to the server
+     */
+    Optional<String> oauthToken();
+
+
+    /**
+     * Sets the OAuth token to use for API access to the server
+     */
+    GeneralConfig oauthToken(String oauthToken);
+
+
+    /**
+     * The user name to use for API access to the server.
+     * <p>
+     * Not used if {@link #oauthToken()} returns a value
+     */
+    Optional<String> username();
+
+
+    /**
+     * Sets the user name to use for API access to the server.
+     * <p>
+     * Not used if {@link #oauthToken()} returns a value
+     */
+    GeneralConfig username(String oauthToken);
 
 }

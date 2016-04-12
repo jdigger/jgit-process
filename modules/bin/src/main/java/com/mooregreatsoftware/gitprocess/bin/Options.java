@@ -23,13 +23,16 @@ import ch.qos.logback.classic.encoder.PatternLayoutEncoder;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.ConsoleAppender;
 import ch.qos.logback.core.encoder.EncoderBase;
-import javaslang.control.Option;
 import javaslang.control.Try;
+import joptsimple.OptionException;
 import joptsimple.OptionParser;
 import joptsimple.OptionSet;
+import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
+import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import java.io.PrintStream;
 import java.io.StringWriter;
 import java.util.List;
@@ -44,9 +47,9 @@ import static java.util.Optional.empty;
  * The options given for running the process commands.
  */
 public abstract class Options {
+    @MonotonicNonNull
     protected OptionSet optionSet;
 
-    @Nonnull
     private final PrintStream printStream;
 
 
@@ -55,7 +58,7 @@ public abstract class Options {
     }
 
 
-    protected Options(@Nonnull PrintStream printStream) {
+    protected Options(PrintStream printStream) {
         this.printStream = printStream;
     }
 
@@ -63,17 +66,27 @@ public abstract class Options {
     /**
      * Parse the command line options and handle the "standard" set before returning the result.
      *
+     * @return the message to show before exiting; null if everything went well
      * @see #createOptionParser()
      * @see #handleStandardOptions(OptionParser)
      */
-    protected Option<String> parse(@Nonnull String[] args) {
-        return Try.of(() -> parseAndHandleStandardOptions(args)).
-            recoverWith(e -> Try.success(Option.of(e.getMessage()))).
+    @SuppressWarnings("RedundantTypeArguments")
+    protected @Nullable String parse(String[] args) {
+        return Try.<@Nullable String>of(() -> parseAndHandleStandardOptions(args)).
+            recoverWith(e -> Try.success(e.getMessage())).
             get();
     }
 
 
-    private Option<String> parseAndHandleStandardOptions(@Nonnull String[] args) {
+    /**
+     * Parse the command line options and handle the "standard" set before returning the result.
+     *
+     * @return the message to show before exiting; null if everything went well
+     * @throws OptionException if problems are detected while parsing
+     * @see #createOptionParser()
+     * @see #handleStandardOptions(OptionParser)
+     */
+    private @Nullable String parseAndHandleStandardOptions(String[] args) throws OptionException {
         final OptionParser parser = createOptionParser();
 
         OptionSet optionSet = parser.parse(args);
@@ -85,13 +98,16 @@ public abstract class Options {
 
     /**
      * Handle the "standard" options: info, quiet, verbose, help, version
+     *
+     * @return the message to show before exiting; null if everything went well
      */
-    protected Option<String> handleStandardOptions(@Nonnull OptionParser parser) {
+    protected @Nullable String handleStandardOptions(OptionParser parser) {
         if (showHelp()) {
-            return Option.some(createHelp(parser));
+            return createHelp(parser);
         }
         else if (showVersion()) {
-            return Option.some("version: " + version().orElse("unknown"));
+            final String version = version();
+            return "version: " + (version != null ? version : "unknown");
         }
         else {
             return setupLogging();
@@ -99,7 +115,7 @@ public abstract class Options {
     }
 
 
-    private String createHelp(@Nonnull OptionParser parser) {
+    private String createHelp(OptionParser parser) {
         final StringWriter writer = new StringWriter();
         writer.write("USAGE: ");
         writer.write(usageInfo());
@@ -111,7 +127,8 @@ public abstract class Options {
         Try.run(() -> parser.printHelpOn(writer));
         writer.write(System.lineSeparator());
         writer.write("version: ");
-        writer.write(version().orElse("unknown"));
+        final String version = version();
+        writer.write(version != null ? version : "unknown");
         writer.write(System.lineSeparator());
         return writer.toString();
     }
@@ -120,38 +137,37 @@ public abstract class Options {
     /**
      * A short description for the command.
      */
-    @Nonnull
     public abstract String description();
 
 
     /**
      * The syntax for running the command. (e.g., "git new-fb [OPTIONS] 'branch_name'")
      */
-    @Nonnull
     public abstract String usageInfo();
 
 
     /**
      * Set up the logging system to show logs at the right level and at the right detail.
+     *
+     * @return the message to show before exiting; null if everything went well
      */
-    protected Option<String> setupLogging() {
+    protected @Nullable String setupLogging() {
         if (useVerboseLogging()) {
             if (useQuietLogging()) {
-                return Option.some("--verbose and --quiet are mutually exclusive\n");
+                return "--verbose and --quiet are mutually exclusive\n";
             }
             if (infoOptionValue()) {
-                return Option.some("--info and --verbose are mutually exclusive\n");
+                return "--info and --verbose are mutually exclusive\n";
             }
         }
         if (useQuietLogging()) {
             if (infoOptionValue()) {
-                return Option.some("--quiet and --info are mutually exclusive\n");
+                return "--quiet and --info are mutually exclusive\n";
             }
         }
 
         // guard since this is a static singleton, it can get "confused" if changes a lot from tests
         if (System.getProperty("gitprocess.logging.testing", "false").equals("false")) {
-
             final LoggerContext context = (LoggerContext)LoggerFactory.getILoggerFactory();
             final Logger rootLogger = context.getLogger(Logger.ROOT_LOGGER_NAME);
             final ConsoleAppender<ILoggingEvent> consoleAppender = (ConsoleAppender<ILoggingEvent>)rootLogger.getAppender("console");
@@ -189,14 +205,13 @@ public abstract class Options {
 
             // StatusPrinter.print(context);
         }
-        return Option.none();
+        return null;
     }
 
 
     /**
      * Override this to customize the OptionParser
      */
-    @Nonnull
     protected OptionParser createOptionParser() {
         return defaultOptionParser();
     }
@@ -205,7 +220,6 @@ public abstract class Options {
     /**
      * Creates a standard option parser that handles: info, quiet, verbose, version, help
      */
-    @Nonnull
     protected static OptionParser defaultOptionParser() {
         final OptionParser optionParser = new OptionParser();
         optionParser.acceptsAll(asList("i", "info"), "moderate output (default: true)");
@@ -219,7 +233,8 @@ public abstract class Options {
 
 
     @SuppressWarnings({"PointlessBooleanExpression", "SimplifiableConditionalExpression", "SimplifiableIfStatement"})
-    public boolean booleanValue(@Nonnull String optionName) {
+    public boolean booleanValue(String optionName) {
+        if (optionSet == null) throw new IllegalStateException("parse(String[] args) was not called");
         final boolean has = optionSet.has(optionName);
         if (has == false) return false;
         return optionSet.hasArgument(optionName) ?
@@ -229,21 +244,24 @@ public abstract class Options {
 
 
     @SuppressWarnings({"PointlessBooleanExpression", "unused"})
-    public Optional<String> stringValue(@Nonnull String optionName) {
+    public Optional<String> stringValue(String optionName) {
+        if (optionSet == null) throw new IllegalStateException("parse(String[] args) was not called");
         final boolean has = optionSet.has(optionName);
         if (has == false) return empty();
         return optionSet.hasArgument(optionName) ?
             Optional.of(optionSet.valueOf(optionName).toString()) :
-            empty();
+            Optional.<@NonNull String>empty();
     }
 
 
     @SuppressWarnings("unchecked")
     public List<String> nonOptionArgs() {
+        if (optionSet == null) throw new IllegalStateException("parse(String[] args) was not called");
         return (List<String>)optionSet.nonOptionArguments();
     }
 
 
+    @EnsuresNonNull("this.optionSet")
     public void optionSet(OptionSet optionSet) {
         this.optionSet = optionSet;
     }

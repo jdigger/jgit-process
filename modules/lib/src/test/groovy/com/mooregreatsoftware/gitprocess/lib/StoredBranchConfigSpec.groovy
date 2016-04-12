@@ -17,6 +17,7 @@ package com.mooregreatsoftware.gitprocess.lib
 
 import com.mooregreatsoftware.gitprocess.config.BranchConfig
 import com.mooregreatsoftware.gitprocess.lib.config.StoredBranchConfig
+import groovy.transform.CompileStatic
 import spock.lang.Subject
 
 @Subject(StoredBranchConfig)
@@ -34,8 +35,7 @@ class StoredBranchConfigSpec extends GitSpecification {
         createCommit "fooble"
 
         then:
-        config.integrationBranch().isPresent() == true
-        config.integrationBranch().get().shortName() == 'master'
+        config.integrationBranch().shortName() == 'master'
 
         when:
         createAndCheckoutBranch "another_branch", "master"
@@ -120,6 +120,7 @@ class StoredBranchConfigSpec extends GitSpecification {
         upstreamDoesNotExist("master")
 
         when:
+        local.fetch()
         branch("master").upstream branch("origin/master")
 
         then:
@@ -134,33 +135,34 @@ class StoredBranchConfigSpec extends GitSpecification {
 
 
     void integrationBranchIs(String branchName) {
-        assert config.integrationBranch().isPresent() == true
-        assert config.integrationBranch().get().shortName() == branchName
+        assert config.integrationBranch().shortName() == branchName
     }
 
 
     def getIntegrationBranchDoesNotExist() {
-        assert config.integrationBranch().isPresent() == false
+        assert config.integrationBranch() == null
         1
     }
 
 
     void upstreamDoesNotExist(String branchName) {
-        assert branch(branchName).upstream().isPresent() == false
+        assert branch(branchName).upstream() == null
     }
 
 
     void upstreamIs(String branchName, String upstreamName) {
-        assert branch(branchName).upstream().isPresent() == true
-        assert branch(branchName).upstream().get().shortName() == upstreamName
+        assert branch(branchName).upstream()
+        assert branch(branchName).upstream().shortName() == upstreamName
     }
 
 
+    @CompileStatic
     void removeRemoteBranch(String branchName) {
-        origin.branches().removeBranch(origin.branches().branch(branchName).get())
+        origin.branches().removeBranch(origin.branches().branch(branchName))
     }
 
 
+    @CompileStatic
     BranchConfig getConfig() {
         currentLib.branchConfig()
     }

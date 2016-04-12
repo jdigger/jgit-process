@@ -94,7 +94,6 @@ trait GitSpecHelper {
 
     String branchTip(GitLib gitLib, String branchName) {
         gitLib.branches().branch(branchName).
-            orElseThrow({ new IllegalArgumentException("Could not find ${branchName}") }).
             objectId().abbreviate(7).name()
     }
 

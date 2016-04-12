@@ -19,42 +19,34 @@ import com.mooregreatsoftware.gitprocess.config.BranchConfig;
 import com.mooregreatsoftware.gitprocess.config.RemoteConfig;
 import com.mooregreatsoftware.gitprocess.lib.Branch;
 import com.mooregreatsoftware.gitprocess.lib.Branches;
+import com.mooregreatsoftware.gitprocess.lib.ExecUtils;
 import com.mooregreatsoftware.gitprocess.lib.StreamUtils;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.eclipse.jgit.lib.Constants;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
-import static java.util.Optional.empty;
 import static org.eclipse.jgit.lib.ConfigConstants.CONFIG_BRANCH_SECTION;
 import static org.eclipse.jgit.lib.ConfigConstants.CONFIG_KEY_MERGE;
 import static org.eclipse.jgit.lib.ConfigConstants.CONFIG_KEY_REMOTE;
 import static org.eclipse.jgit.lib.Constants.MASTER;
 
-@SuppressWarnings("ConstantConditions")
-public class StoredBranchConfig implements BranchConfig {
+@SuppressWarnings({"ConstantConditions", "RedundantTypeArguments"})
+public class StoredBranchConfig extends AbstractStoredConfig implements BranchConfig {
     private static final Logger LOG = LoggerFactory.getLogger(StoredBranchConfig.class);
 
-    @Nonnull
-    private final StoredConfig storedConfig;
-
-    @Nonnull
     private final RemoteConfig remoteConfig;
-
-    @Nonnull
     private final Branches branches;
 
 
-    public StoredBranchConfig(@Nonnull StoredConfig storedConfig, @Nonnull RemoteConfig remoteConfig, @Nonnull Branches branches) {
-        this.storedConfig = storedConfig;
+    public StoredBranchConfig(StoredConfig storedConfig, RemoteConfig remoteConfig, Branches branches) {
+        super(storedConfig);
         this.remoteConfig = remoteConfig;
         this.branches = branches;
     }
@@ -67,14 +59,14 @@ public class StoredBranchConfig implements BranchConfig {
      * If there are remotes defined, then gets the "master" branch from the default remote.
      * Otherwise checks to see if "master" exists locally.
      *
-     * @return empty() if it can't compute a reasonable value
+     * @return null if it can't compute a reasonable value
      * @see RemoteConfig#remoteName()
      */
-    @Nonnull
     @Override
-    public Optional<Branch> integrationBranch() {
-        final Optional<Branch> configIntegrationBranch = integrationBranchFromGitConfig();
-        if (configIntegrationBranch.isPresent()) return configIntegrationBranch;
+    @Nullable
+    public Branch integrationBranch() {
+        final Branch configIntegrationBranch = integrationBranchFromGitConfig();
+        if (configIntegrationBranch != null) return configIntegrationBranch;
 
         return remoteConfig.hasRemotes() ? integrationBranchFromRemoteBranches() : integrationBranchFromLocalBranches();
     }
@@ -83,26 +75,26 @@ public class StoredBranchConfig implements BranchConfig {
     /**
      * Set (and writes to git configuration) the integration branch to use
      */
-    @Nonnull
     @Override
-    public BranchConfig integrationBranch(@Nonnull Branch branch) {
+    public BranchConfig integrationBranch(Branch branch) {
         if (branch == null) throw new IllegalArgumentException("branch == null");
         LOG.debug("Setting integration branch to {}", branch.name());
-        storedConfig.setString(GIT_PROCESS_SECTION_NAME, null, INTEGRATION_BRANCH_KEY, branch.name());
-        v(storedConfig::save);
+        setString(GIT_PROCESS_SECTION_NAME, null, INTEGRATION_BRANCH_KEY, branch.name());
         return this;
     }
 
 
-    @Nonnull
-    private Optional<Branch> integrationBranchFromRemoteBranches() {
+    @Nullable
+    private Branch integrationBranchFromRemoteBranches() {
         // TODO: Figure out how to get the remote HEAD.  FETCH_HEAD?
         // Appears to be indirectly in FetchResult.getAdvertisedRefs()
-        return e(() -> {
+        return ExecUtils.<@Nullable Branch>e(() -> {
             // if remote has "master", assume that's the integration branch.
             // otherwise give up and return empty()
-            final String lookFor = remoteConfig.remoteName().orElse("ERROR") + "/" + MASTER;
-            final Optional<Branch> branch = searchForBranch(branches.remoteBranches(), lookFor);
+            final String remoteName = remoteConfig.remoteName();
+            if (remoteName == null) return null;
+            final String lookFor = remoteName + "/" + MASTER;
+            final Branch branch = searchForBranch(branches.remoteBranches(), lookFor);
 
             logIntegrationBranch(lookFor, branch, branches.remoteBranches());
             return branch;
@@ -110,13 +102,13 @@ public class StoredBranchConfig implements BranchConfig {
     }
 
 
-    @Nonnull
-    private Optional<Branch> integrationBranchFromLocalBranches() {
-        return e(() -> {
+    @Nullable
+    private Branch integrationBranchFromLocalBranches() {
+        return ExecUtils.<@Nullable Branch>e(() -> {
             // if have "master", assume that's the integration branch.
             // otherwise give up and return empty()
             final String lookFor = MASTER;
-            final Optional<Branch> branch = searchForBranch(branches.localBranches(), lookFor);
+            final Branch branch = searchForBranch(branches.localBranches(), lookFor);
 
             logIntegrationBranch(lookFor, branch, branches.localBranches());
             return branch;
@@ -124,17 +116,17 @@ public class StoredBranchConfig implements BranchConfig {
     }
 
 
-    @Nonnull
-    private Optional<Branch> searchForBranch(Iterator<Branch> branches, String branchName) {
+    @Nullable
+    private Branch searchForBranch(Iterator<Branch> branches, String branchName) {
         return StreamUtils.stream(branches).
             filter(branch -> branch.shortName().equals(branchName)).
-            findFirst();
+            findFirst().orElse(null);
     }
 
 
-    private static void logIntegrationBranch(String branchName, Optional<Branch> branch, Iterator<Branch> branches) {
-        if (branch.isPresent()) {
-            LOG.debug("integrationBranch(): have a \"{}\" branch", branch.get().shortName());
+    private static void logIntegrationBranch(String branchName, @Nullable Branch branch, Iterator<Branch> branches) {
+        if (branch != null) {
+            LOG.debug("integrationBranch(): have a \"{}\" branch", branch.shortName());
         }
         else {
             LOG.warn("Do not have a \"{}\" branch: [{}]\n" +
@@ -149,75 +141,70 @@ public class StoredBranchConfig implements BranchConfig {
     }
 
 
-    @Nonnull
-    private Optional<Branch> integrationBranchFromGitConfig() {
-        final String branchName = storedConfig.getString(GIT_PROCESS_SECTION_NAME, null, INTEGRATION_BRANCH_KEY);
+    @Nullable
+    private Branch integrationBranchFromGitConfig() {
+        final String branchName = getString(GIT_PROCESS_SECTION_NAME, null, INTEGRATION_BRANCH_KEY);
         if (branchName != null) {
             LOG.debug("integrationBranch(): {}.{} has a value of \"{}\" so using that",
                 GIT_PROCESS_SECTION_NAME, INTEGRATION_BRANCH_KEY, branchName);
             return branches.branch(branchName);
         }
-        return empty();
+        return null;
     }
 
 
-    @Nonnull
     @Override
-    public BranchConfig setUpstream(@Nonnull Branch branch, @Nonnull Branch upstream) {
+    public BranchConfig setUpstream(Branch branch, Branch upstream) {
         final String branchShortName = branch.shortName();
 
         Optional<String> remoteName = upstream.remoteName();
         if (remoteName.isPresent()) {
             String upstreamBranchName = upstream.shortName();
-            storedConfig.setString(CONFIG_BRANCH_SECTION,
+            setString(CONFIG_BRANCH_SECTION,
                 branchShortName, CONFIG_KEY_REMOTE,
                 remoteName.get());
             final String upstreamNameWithoutRemote = upstreamBranchName.substring(remoteName.get().length() + 1);
-            storedConfig.setString(CONFIG_BRANCH_SECTION,
+            setString(CONFIG_BRANCH_SECTION,
                 branchShortName, CONFIG_KEY_MERGE,
                 Constants.R_HEADS + upstreamNameWithoutRemote);
             LOG.info("Setting upstream for \"{}\" to remote \"{}\" on \"{}\"", branch.shortName(), upstreamNameWithoutRemote, remoteName.get());
         }
         else {
-            storedConfig.setString(CONFIG_BRANCH_SECTION,
+            setString(CONFIG_BRANCH_SECTION,
                 branchShortName, CONFIG_KEY_REMOTE, ".");
-            storedConfig.setString(CONFIG_BRANCH_SECTION,
+            setString(CONFIG_BRANCH_SECTION,
                 branchShortName, CONFIG_KEY_MERGE, upstream.shortName());
             LOG.info("Setting upstream for \"{}\" to local \"{}\"", branch.shortName(), upstream.shortName());
         }
-        v(storedConfig::save);
         return this;
     }
 
 
-    @Nonnull
     @Override
-    public Optional<Branch> getUpstream(Branch branch) {
-        Optional<Branch> upstream = Optional.ofNullable(
-            storedConfig.getString(
-                CONFIG_BRANCH_SECTION,
-                branch.shortName(),
-                CONFIG_KEY_REMOTE
-            )
-        ).map(remoteName ->
-            remoteName.equals(".") ? "" : remoteName + "/").
-            flatMap(remotePath ->
-                    Optional.ofNullable(storedConfig.getString(
-                            CONFIG_BRANCH_SECTION,
-                            branch.shortName(),
-                            CONFIG_KEY_MERGE
-                        )
-                    ).map(Repository::shortenRefName).
-                        map(upstreamBranchName ->
-                                remotePath + upstreamBranchName
-                        )
-            ).flatMap(branches::branch);
+    @Nullable
+    @SuppressWarnings("RedundantCast")
+    public Branch getUpstream(Branch branch) {
+        final String remoteName = getString(CONFIG_BRANCH_SECTION, branch.shortName(), CONFIG_KEY_REMOTE);
 
-        if (upstream.isPresent()) {
-            LOG.debug("getUpstream({}): {}", branch.shortName(), upstream.get().shortName());
+        if (remoteName == null) {
+            LOG.debug("There is no upstream set for \"{}\"", branch.shortName());
+            return null;
         }
-        else {
-            LOG.debug("getUpstream({}): empty", branch.shortName());
+
+        final String remotePath = (remoteName.equals(".") ? "" : remoteName + "/");
+
+        final String upstreamBranchName = getString(CONFIG_BRANCH_SECTION, branch.shortName(), CONFIG_KEY_MERGE);
+
+        if (upstreamBranchName == null) {
+            throw new IllegalStateException("There is no configuration value for \"" + CONFIG_BRANCH_SECTION + '.' + branch.shortName() + '.' + CONFIG_KEY_MERGE + "\", which is an invalid Git state");
+        }
+
+        final String fullRemotePath = remotePath + Repository.shortenRefName(upstreamBranchName);
+
+        final Branch upstream = branches.branch(fullRemotePath);
+
+        if (upstream == null) {
+            throw new IllegalArgumentException("The upstream for \"" + branch.shortName() + "\" (\"" + fullRemotePath + "\") does not exist");
         }
 
         return upstream;

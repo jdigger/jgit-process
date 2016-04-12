@@ -16,11 +16,15 @@
 package com.mooregreatsoftware.gitprocess.lib;
 
 import com.mooregreatsoftware.gitprocess.config.BranchConfig;
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.checker.nullness.qual.Nullable;
 
 import javax.annotation.Nonnull;
 import java.util.Iterator;
-import java.util.Optional;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
+import static com.mooregreatsoftware.gitprocess.config.BranchConfig.PARKING_BRANCH_NAME;
 
 /**
  * The "container" for branches, this gives easy access to the most important branches (current, integration,
@@ -28,8 +32,7 @@ import java.util.stream.Collectors;
  */
 public interface Branches {
 
-    @Nonnull
-    Optional<Branch> currentBranch();
+    @Nullable Branch currentBranch();
 
 
     /**
@@ -38,7 +41,8 @@ public interface Branches {
      * @see #currentBranch()
      */
     default boolean onParking() {
-        return currentBranch().map(bn -> bn.shortName().equals(BranchConfig.PARKING_BRANCH_NAME)).orElse(false);
+        final Branch currentBranch = currentBranch();
+        return (currentBranch != null) && Objects.equals(currentBranch.shortName(), PARKING_BRANCH_NAME);
     }
 
     /**
@@ -47,15 +51,11 @@ public interface Branches {
     @Nonnull
     default Branch parking() {
         // return the parking branch if it exists, otherwise create it based on the integration branch
-        return branch(
-            BranchConfig.PARKING_BRANCH_NAME).
-            orElseGet(
-                () -> createBranch(
-                    BranchConfig.PARKING_BRANCH_NAME,
-                    integrationBranch().
-                        orElseThrow(() -> new IllegalStateException("No integration branch"))
-                )
-            );
+        final Branch parkingBranch = branch(PARKING_BRANCH_NAME);
+        if (parkingBranch != null) return parkingBranch;
+        final Branch integrationBranch = integrationBranch();
+        if (integrationBranch == null) throw new IllegalStateException("No integration branch");
+        return createBranch(PARKING_BRANCH_NAME, integrationBranch);
     }
 
     /**
@@ -70,12 +70,12 @@ public interface Branches {
      * <p>
      * This is the "implied" branch for many operations.
      *
-     * @return empty() only if this is not set in configuration and there is no reasonable default
+     * @return null only if this is not set in configuration and there is no reasonable default
      * @see #integrationBranch(Branch)
      * @see BranchConfig#integrationBranch(Branch)
      */
-    @Nonnull
-    default Optional<Branch> integrationBranch() {
+    @Nullable
+    default Branch integrationBranch() {
         return config().integrationBranch();
     }
 
@@ -116,7 +116,9 @@ public interface Branches {
      */
     @Nonnull
     default Branch createBranch(@Nonnull String branchName, @Nonnull String baseBranchName) throws BranchAlreadyExists {
-        final Branch baseBranch = branch(baseBranchName).orElseThrow(() -> new IllegalArgumentException("Could not find branch named \"" + baseBranchName + "\""));
+        final Branch baseBranch = branch(baseBranchName);
+        if (baseBranch == null)
+            throw new IllegalArgumentException("Could not find branch named \"" + baseBranchName + "\"");
         return createBranch(branchName, baseBranch);
     }
 
@@ -124,10 +126,9 @@ public interface Branches {
     /**
      * Returns the given branch.
      *
-     * @param branchName the name of the branch to return, or empty() if it doesn't exist
+     * @param branchName the name of the branch to return, or null if it doesn't exist
      */
-    @Nonnull
-    Optional<Branch> branch(@Nonnull String branchName);
+    @Nullable Branch branch(@Nonnull String branchName);
 
 
     @Nonnull
@@ -136,13 +137,13 @@ public interface Branches {
 
     @Nonnull
     default Iterator<Branch> remoteBranches() {
-        return StreamUtils.stream(allBranches()).filter(Branch::isRemote).collect(Collectors.toList()).listIterator();
+        return StreamUtils.stream(allBranches()).filter(Branch::isRemote).collect(Collectors.<@NonNull Branch>toList()).listIterator();
     }
 
 
     @Nonnull
     default Iterator<Branch> localBranches() {
-        return StreamUtils.stream(allBranches()).filter(branch -> !branch.isRemote()).collect(Collectors.toList()).listIterator();
+        return StreamUtils.stream(allBranches()).filter(branch -> !branch.isRemote()).collect(Collectors.<@NonNull Branch>toList()).listIterator();
     }
 
     Branches removeBranch(@Nonnull Branch baseBranch);

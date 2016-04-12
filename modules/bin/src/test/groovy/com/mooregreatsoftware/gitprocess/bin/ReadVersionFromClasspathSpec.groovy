@@ -33,21 +33,21 @@ class ReadVersionFromClasspathSpec extends Specification {
         filename = "file:/dir/com/mooregreatsoftware/gitprocess/lib/${version}/lib-${version}.jar!/${classFilename}"
 
         then:
-        ReadVersionFromClasspath.versionFromJarFilename(filename, classFilename).get() == version
+        ReadVersionFromClasspath.versionFromJarFilename(filename, classFilename) == version
 
         when:
         version = '0.0.1-dev.16.uncommitted+3d01efe'
         filename = "file:/dir/lib-${version}.jar!/${classFilename}"
 
         then:
-        ReadVersionFromClasspath.versionFromJarFilename(filename, classFilename).get() == version
+        ReadVersionFromClasspath.versionFromJarFilename(filename, classFilename) == version
 
         when:
         version = '1.1.1'
         filename = "file:/dir/lib-${version}.jar!/${classFilename}"
 
         then:
-        ReadVersionFromClasspath.versionFromJarFilename(filename, classFilename).get() == version
+        ReadVersionFromClasspath.versionFromJarFilename(filename, classFilename) == version
     }
 
 
@@ -55,7 +55,7 @@ class ReadVersionFromClasspathSpec extends Specification {
         def filename = "/dir/classes/${classFilename}"
 
         expect:
-        ReadVersionFromClasspath.versionFromJarFilename(filename, classFilename).isPresent() == false
+        ReadVersionFromClasspath.versionFromJarFilename(filename, classFilename) == null
     }
 
 }

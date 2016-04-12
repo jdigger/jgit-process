@@ -15,6 +15,9 @@
  */
 package com.mooregreatsoftware.gitprocess.lib;
 
+import org.checkerframework.checker.nullness.qual.NonNull;
+import org.checkerframework.dataflow.qual.Pure;
+import org.eclipse.jgit.annotations.Nullable;
 import org.eclipse.jgit.api.errors.GitAPIException;
 
 import java.io.IOException;
@@ -36,7 +39,8 @@ public final class ExecUtils {
      * @param callable what to run
      * @param <T>      what to return
      */
-    public static <T> T e(Callable<T> callable) {
+    @Nullable
+    public static <T> T e(@NonNull Callable<T> callable) {
         try {
             return callable.call();
         }
@@ -59,7 +63,7 @@ public final class ExecUtils {
      * @param callable what to run
      * @see #e(Callable)
      */
-    public static void v(ExceptionAction callable) {
+    public static void v(@NonNull ExceptionAction callable) {
         try {
             callable.call();
         }
@@ -73,7 +77,8 @@ public final class ExecUtils {
     }
 
 
-    public static String toString(final Throwable throwable) {
+    @Pure
+    public static @NonNull String toString(final @NonNull Throwable throwable) {
         final StringWriter sw = new StringWriter();
         final PrintWriter pw = new PrintWriter(sw, true);
         pw.println(throwable.toString());
@@ -83,7 +88,7 @@ public final class ExecUtils {
 
 
     /**
-     * Similar interface as {@link Callable} but does not return anything. Used for {@link GitLib#v(ExceptionAction)}
+     * Similar interface as {@link Callable} but does not return anything. Used for {@link ExecUtils#v(ExceptionAction)}
      */
     public interface ExceptionAction {
         void call() throws Exception;

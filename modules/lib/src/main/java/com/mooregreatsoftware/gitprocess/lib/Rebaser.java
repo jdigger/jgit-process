@@ -31,7 +31,9 @@ public class Rebaser {
 
 
     public static Either<String, SuccessfulRebase> rebase(GitLib gitLib, Branch baseBranch) {
-        final Branch currentBranch = gitLib.branches().currentBranch().get();
+        final Branch currentBranch = gitLib.branches().currentBranch();
+
+        if (currentBranch == null) return left("No branch is currently checked out");
 
         LOG.debug("Rebasing {} with {}", currentBranch, baseBranch.shortName());
 

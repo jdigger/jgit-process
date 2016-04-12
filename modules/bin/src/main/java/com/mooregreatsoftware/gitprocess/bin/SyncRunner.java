@@ -15,37 +15,57 @@
  */
 package com.mooregreatsoftware.gitprocess.bin;
 
+import com.mooregreatsoftware.gitprocess.bin.AbstractRunner.B.GitLibSetter;
 import com.mooregreatsoftware.gitprocess.lib.Branch;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
 import com.mooregreatsoftware.gitprocess.process.Sync;
 import javaslang.control.Either;
+import org.checkerframework.checker.nullness.qual.NonNull;
 
-import javax.annotation.Nonnull;
 import java.io.IOException;
 
 /**
  * Syncs local changes with the server.
  *
+ * @see #builder()
  * @see Sync#sync(GitLib, boolean, boolean)
  */
-@SuppressWarnings("ConstantConditions")
-public class SyncRunner extends AbstractRunner {
+public class SyncRunner extends AbstractRunner<SyncOptions, String, Branch> {
 
-    public static void main(String[] args) throws IOException {
-        final GitLib gitLib = createGitLib();
-
-        int exitValue = run(args,
-            a -> SyncOptions.create(a, gitLib.generalConfig()),
-            opts -> SyncRunner.<String, Branch>doSync(gitLib, opts)
-        );
-
-        System.exit(exitValue);
+    private SyncRunner(GitLib gitLib, SyncOptions options) {
+        super(gitLib, options);
     }
 
 
-    @Nonnull
-    private static Either<String, Branch> doSync(@Nonnull GitLib gitLib, @Nonnull SyncOptions opts) {
-        return Sync.sync(gitLib, opts.merge(), opts.localOnly());
+    /**
+     * Used to create a new instance of {@link SyncRunner}
+     */
+    public static GitLibSetter builder() {
+        return new B.AbstractBuilder<SyncOptions, String>() {
+            @Override
+            @SuppressWarnings("RedundantCast")
+            protected Either<String, SyncOptions> options(String[] args) {
+                final GitLib gl = (@NonNull GitLib)this.gitLib;
+                return SyncOptions.create(args, gl.generalConfig());
+            }
+
+
+            @Override
+            protected Runner doBuild(GitLib gitLib, SyncOptions options) {
+                return new SyncRunner(gitLib, options);
+            }
+        };
+    }
+
+
+    @Override
+    protected Either<String, Branch> mainFunc(SyncOptions options) {
+        return Sync.sync(gitLib(), options.merge(), options.localOnly());
+    }
+
+
+    public static void main(String[] args) throws IOException {
+        System.exit(builder().gitLib(createCurrentDirGitLib()).cliArgs(args).build().run());
     }
 
 }

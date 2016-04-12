@@ -24,13 +24,10 @@ import com.mooregreatsoftware.gitprocess.lib.Rebaser;
 import com.mooregreatsoftware.gitprocess.lib.SimpleFetchResult;
 import javaslang.Function2;
 import javaslang.control.Either;
+import org.checkerframework.checker.nullness.qual.Nullable;
 import org.eclipse.jgit.lib.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import javax.annotation.Nonnull;
-import javax.annotation.Nullable;
-import java.util.Optional;
 
 import static com.mooregreatsoftware.gitprocess.process.Sync.Combiners.MERGER;
 import static com.mooregreatsoftware.gitprocess.process.Sync.Combiners.REBASER;
@@ -40,7 +37,7 @@ import static javaslang.control.Either.right;
 /**
  * Syncs local changes with the server.
  */
-@SuppressWarnings("ConstantConditions")
+@SuppressWarnings({"ConstantConditions", "RedundantCast"})
 public class Sync {
     private static final Logger LOG = LoggerFactory.getLogger(Sync.class);
 
@@ -82,19 +79,18 @@ public class Sync {
      *
      * @return Left(error message) or Right(resulting branch)
      */
-    @Nonnull
-    public static Either<String, Branch> sync(@Nonnull GitLib gitLib,
+    public static Either<String, Branch> sync(GitLib gitLib,
                                               boolean doMerge,
                                               boolean localOnly) {
         if (gitLib == null) throw new IllegalArgumentException("gitLib == null");
 
         final Branches branches = gitLib.branches();
 
-        if (!branches.currentBranch().isPresent()) {
+        if (branches.currentBranch() == null) {
             return left("Not currently on a branch");
         }
 
-        if (!branches.integrationBranch().isPresent()) {
+        if (branches.integrationBranch() == null) {
             return left("There is no integration branch");
         }
 
@@ -115,8 +111,7 @@ public class Sync {
      *
      * @return Left(error message) or Right(resulting branch)
      */
-    @Nonnull
-    private static Either<String, Branch> doSync(@Nonnull GitLib gitLib, boolean doMerge, boolean localOnly) {
+    private static Either<String, Branch> doSync(GitLib gitLib, boolean doMerge, boolean localOnly) {
         return doMerge ?
             mergeSync(gitLib, localOnly) :
             rebaseSync(gitLib, localOnly);
@@ -126,38 +121,39 @@ public class Sync {
     /**
      * Merge with the integration branch then push to the server.
      *
-     * @return Left(error message) or Right(resulting branch)
+     * @return Left(error message), Right(resulting branch)
      */
-    @Nonnull
-    private static Either<String, Branch> mergeSync(@Nonnull GitLib gitLib, boolean localOnly) {
+    private static Either<String, Branch> mergeSync(GitLib gitLib, boolean localOnly) {
         return combineSync(gitLib, "merge", localOnly, Combiners.of(MERGER));
     }
 
 
-    @Nonnull
-    private static Either<String, Branch> rebaseSync(@Nonnull GitLib gitLib, boolean localOnly) {
+    private static Either<String, Branch> rebaseSync(GitLib gitLib, boolean localOnly) {
         return combineSync(gitLib, "rebase", localOnly, Combiners.of(REBASER));
     }
 
 
-    @Nonnull
-    private static <T> Either<String, Branch> combineSync(@Nonnull GitLib gitLib,
-                                                          @Nonnull String combineType,
+    private static <T> Either<String, Branch> combineSync(GitLib gitLib,
+                                                          String combineType,
                                                           boolean localOnly,
                                                           Combiner<T> combineWith) {
         LOG.info("Doing {}-based sync", combineType);
 
         final Branches branches = gitLib.branches();
-        final Branch integrationBranch = branches.integrationBranch().get();
-        final Branch currentBranch = branches.currentBranch().get();
+
+        final Branch integrationBranch = branches.integrationBranch();
+        if (integrationBranch == null) return left("No integration branch is set");
+
+        final Branch currentBranch = branches.currentBranch();
+        if (currentBranch == null) return left("No branch is checked out");
 
         final boolean hasRemotes = gitLib.remoteConfig().hasRemotes();
         if (hasRemotes) {
-            final Either<String, Optional<SimpleFetchResult>> fetch = gitLib.fetch();
+            final Either<String, @Nullable SimpleFetchResult> fetch = gitLib.fetch();
             if (fetch.isLeft()) return left(fetch.getLeft());
         }
 
-        final String integrationCombineResult = combineWith(gitLib, integrationBranch, combineType, combineWith);
+        final String integrationCombineResult = combineWith(gitLib, integrationBranch, combineType, combineWith, currentBranch);
         if (integrationCombineResult != null) return left(integrationCombineResult);
 
         if (localOnly) {
@@ -173,20 +169,21 @@ public class Sync {
         final Either<String, Pusher> ePusher = handleRemoteChanged(gitLib, currentBranch, combineWith);
         if (ePusher.isLeft()) return left(ePusher.getLeft());
 
-        return ePusher.get().
-            push().
-            flatMap(r -> r.success() ? right(currentBranch) : left(r.toString()));
+        final Pusher pusher = ePusher.get();
+        return pusher.push().
+            flatMap(r -> r.success() ? Either.<String, Branch>right(currentBranch) : left(r.toString()));
     }
 
 
     @Nullable
-    private static <T> String combineWith(@Nonnull GitLib gitLib,
-                                          @Nonnull Branch integrationBranch,
-                                          @Nonnull String combineType,
-                                          @Nonnull Combiner<T> combiner) {
-        final Branch currentBranch = gitLib.branches().currentBranch().get();
+    private static <T> String combineWith(GitLib gitLib,
+                                          Branch integrationBranch,
+                                          String combineType,
+                                          Combiner<T> combiner,
+                                          Branch currentBranch) {
         if (LOG.isDebugEnabled())
             LOG.debug("{}{} {} with {}", combineType.substring(0, 1), combineType.substring(1), currentBranch, integrationBranch);
+
         final Either<String, T> rebaseEither = combiner.apply(gitLib, integrationBranch);
 
         if (rebaseEither.isLeft()) return rebaseEither.getLeft();
@@ -198,29 +195,25 @@ public class Sync {
 
 
     /**
-     * @return error message if there are problems
+     * @return Left(error message), Right(the Pusher to use)
      */
-    @Nonnull
     @SuppressWarnings("PointlessBooleanExpression")
-    private static <T> Either<String, Pusher> handleRemoteChanged(@Nonnull GitLib gitLib,
-                                                                  @Nonnull Branch currentBranch,
-                                                                  @Nonnull Combiner<T> combiner) {
+    private static <T> Either<String, Pusher> handleRemoteChanged(GitLib gitLib,
+                                                                  Branch currentBranch,
+                                                                  Combiner<T> combiner) {
         LOG.debug("Handle potential remote changed");
 
-        final Optional<ObjectId> oRemoteOID = currentBranch.remoteOID();
+        final ObjectId remoteOID = currentBranch.remoteOID();
 
-        final Either<String, Optional<ObjectId>> eLastSynced = currentBranch.lastSyncedAgainst();
+        final Either<String, @Nullable ObjectId> eLastSynced = currentBranch.lastSyncedAgainst();
         if (eLastSynced.isLeft()) return left(eLastSynced.getLeft());
 
-        final Optional<ObjectId> oLastSynced = eLastSynced.get();
-        if (oLastSynced.isPresent()) { // deal with possible change
-            if (oRemoteOID.isPresent() == false) {
+        final ObjectId lastSyncedOID = eLastSynced.get();
+        if (lastSyncedOID != null) { // deal with possible change
+            if (remoteOID == null) {
                 LOG.warn("The remote version of this branch has disappeared");
                 return right(Pusher.create(gitLib, currentBranch, currentBranch.simpleName()));
             }
-
-            final ObjectId remoteOID = oRemoteOID.get();
-            final ObjectId lastSyncedOID = oLastSynced.get();
 
             if (remoteOID.equals(lastSyncedOID)) {
                 LOG.debug("The last synced OID is the same as the remote OID: {}", remoteOID.abbreviate(7).name());
@@ -247,11 +240,9 @@ public class Sync {
         else {
             LOG.debug("This has not been synced before");
 
-            if (oRemoteOID.isPresent() == false) {
+            if (remoteOID == null) {
                 return right(Pusher.create(gitLib, currentBranch, currentBranch.simpleName()));
             }
-
-            final ObjectId remoteOID = oRemoteOID.get();
 
             if (currentBranch.contains(remoteOID)) {
                 LOG.debug("\"{}\" contains {} so will do a normal fast-forward push", currentBranch.simpleName(), remoteOID.abbreviate(7).name());
@@ -269,15 +260,16 @@ public class Sync {
     }
 
 
-    @Nonnull
-    private static <T> Either<String, Pusher> reconcileWithRemoteBranch(@Nonnull GitLib gitLib, @Nonnull Branch currentBranch, @Nonnull Combiner<T> combiner) {
-        final String remoteBranchName = currentBranch.remoteBranchName().get();
-        final Branch remoteBranch = gitLib.branches().branch(remoteBranchName).get();
+    private static <T> Either<String, Pusher> reconcileWithRemoteBranch(GitLib gitLib, Branch currentBranch, Combiner<T> combiner) {
+        final String remoteBranchName = currentBranch.remoteBranchName();
+        if (remoteBranchName == null) return left("Could not determine a remote branch name for " + currentBranch);
+
+        final Branch remoteBranch = gitLib.branches().branch(remoteBranchName);
         final Either<String, T> eRemote = combiner.apply(gitLib, remoteBranch);
         if (eRemote.isLeft()) return left(eRemote.getLeft());
 
         // reapply to integration so that it can fast-forward with it
-        final Either<String, T> eIntegration = combiner.apply(gitLib, gitLib.branches().integrationBranch().get());
+        final Either<String, T> eIntegration = combiner.apply(gitLib, gitLib.branches().integrationBranch());
         if (eIntegration.isLeft()) return left(eIntegration.getLeft());
 
         // if it had to "reconcile" with remote, that means that this may not be a simple fast-forward on the remote

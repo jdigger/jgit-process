@@ -18,8 +18,7 @@ package com.mooregreatsoftware.gitprocess.config;
 import com.mooregreatsoftware.gitprocess.lib.Branch;
 import com.mooregreatsoftware.gitprocess.lib.Config;
 
-import javax.annotation.Nonnull;
-import java.util.Optional;
+import javax.annotation.Nullable;
 
 /**
  * Configuration around branches.
@@ -34,11 +33,11 @@ public interface BranchConfig extends Config {
      * <p>
      * This is the "implied" branch for many operations.
      *
-     * @return empty() only if this is not set in configuration and there is no reasonable default
+     * @return null only if this is not set in configuration and there is no reasonable default
      * @see #integrationBranch(Branch)
      */
-    @Nonnull
-    Optional<Branch> integrationBranch();
+    @Nullable
+    Branch integrationBranch();
 
     /**
      * Sets (and writes to git configuration) the integration branch to use.
@@ -47,8 +46,7 @@ public interface BranchConfig extends Config {
      * @return this
      * @see #integrationBranch()
      */
-    @Nonnull
-    BranchConfig integrationBranch(@Nonnull Branch branch);
+    BranchConfig integrationBranch(Branch branch);
 
     /**
      * Set (and write to git configuration) the upstream/tracking to use for a branch.
@@ -57,8 +55,7 @@ public interface BranchConfig extends Config {
      * @param upstream the branch to set the upstream to
      * @return this
      */
-    @Nonnull
-    BranchConfig setUpstream(@Nonnull Branch branch, @Nonnull Branch upstream);
+    BranchConfig setUpstream(Branch branch, Branch upstream);
 
     /**
      * The upstream/tracking that has been set for a branch.
@@ -66,6 +63,7 @@ public interface BranchConfig extends Config {
      * @param branch the branch to get the upstream configuration for
      * @return empty() if nothing has been set
      */
-    @Nonnull
-    Optional<Branch> getUpstream(Branch branch);
+    @Nullable
+    Branch getUpstream(Branch branch);
+
 }

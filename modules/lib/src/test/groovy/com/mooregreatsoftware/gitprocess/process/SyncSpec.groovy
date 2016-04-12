@@ -1657,9 +1657,8 @@ abstract class SyncSpec extends GitSpecification {
     @CompileStatic
     Branch syncIsRun(boolean doCheckout = true) {
         if (doCheckout) {
-            local.branches().branch("fb").orElseGet({
-                local.branches().createBranch("fb", "master")
-            }).checkout().getOrElseThrow({ new IllegalStateException(it as String) } as Function)
+            def fb = local.branches().branch("fb") ?: local.branches().createBranch("fb", "master")
+            fb.checkout().getOrElseThrow({ new IllegalStateException(it as String) } as Function)
         }
 
         run(local).getOrElseThrow({ logger.error it.toString(); new IllegalStateException(it.toString()) } as Function)
@@ -1685,7 +1684,7 @@ abstract class SyncSpec extends GitSpecification {
 
     @CompileStatic
     def writeSyncControl() {
-        currentLib.branches().currentBranch().get().recordLastSyncedAgainst()
+        currentLib.branches().currentBranch().recordLastSyncedAgainst()
     }
 
 }

@@ -19,6 +19,27 @@ allprojects {
     apply plugin: 'idea'
     group = 'com.mooregreatsoftware.gitprocess'
 
+    //noinspection GroovyAssignabilityCheck
+    configurations {
+        //noinspection GroovyAssignabilityCheck
+        checkerFrameworkAnnotatedJDK {
+            description = 'a copy of JDK classes with Checker Framework type qualifiers inserted'
+        }
+        //noinspection GroovyAssignabilityCheck
+        checkerFramework {
+            description = 'The Checker Framework: custom plugable types for Java'
+        }
+    }
+
+    def checkerFrameworkVersion = '1.9.13'
+
+    //noinspection GroovyAssignabilityCheck
+    dependencies {
+        checkerFrameworkAnnotatedJDK "org.checkerframework:jdk8:${checkerFrameworkVersion}"
+
+        checkerFramework "org.checkerframework:checker:${checkerFrameworkVersion}"
+    }
+
     project.plugins.withId('java') {
         repositories {
             jcenter()
@@ -31,12 +52,28 @@ allprojects {
 
             compile 'org.slf4j:slf4j-api:1.7.19'
 
+            compile "org.checkerframework:checker-qual:${checkerFrameworkVersion}"
+
             testCompile 'org.codehaus.groovy:groovy-all:2.4.4'
             testCompile 'junit:junit:4.12'
             testCompile "org.spockframework:spock-core:1.0-groovy-2.4", {
                 exclude group: 'org.codehaus.groovy', module: 'groovy-all'
                 exclude group: 'org.hamcrest', module: 'hamcrest-core'
             }
+
+            testCompile "org.eclipse.jetty:jetty-server:9.3.8.v20160314"
+        }
+
+        tasks.withType(JavaCompile).all { JavaCompile compile ->
+            compile.options.compilerArgs = [
+                '-processor', 'org.checkerframework.checker.nullness.NullnessChecker',
+                '-processorpath', "${configurations.checkerFramework.asPath}",
+                // comment to turn Checker Framework warnings into errors
+                '-Awarns',
+                "-AskipUses=javaslang",
+                "-Alint=-cast:unsafe",
+                "-Xbootclasspath/p:${configurations.checkerFrameworkAnnotatedJDK.asPath}"
+            ]
         }
 
         javadoc {
@@ -45,12 +82,8 @@ allprojects {
         }
 
         // Hack around Oracle's breaking changes to JDK 1.8 Javadoc tool
-        if (JavaVersion.current().isJava8Compatible()) {
-            allprojects {
-                tasks.withType(Javadoc) {
-                    options.addStringOption('Xdoclint:none', '-quiet')
-                }
-            }
+        tasks.withType(Javadoc) {
+            options.addStringOption('Xdoclint:none', '-quiet')
         }
     }
 }
@@ -87,4 +120,41 @@ bintray {
 //noinspection GroovyAssignabilityCheck
 wrapper {
     gradleVersion = 2.12
+}
+
+idea.project.ipr {
+    withXml { provider ->
+        def annotationProcessing = provider.node.component
+            .find { it.@name == 'CompilerConfiguration' }
+            .annotationProcessing
+
+        def profile = new NodeBuilder().profile(default: false, name: "CheckerFramework", enabled: true) {
+            option(name: "warns", value: "true")
+            option(name: "skipUses", value: "javaslang")
+            option(name: "lint", value: "-cast:unsafe")
+            // TODO consolidate with Gradle javac configuration
+            processor(name: "org.checkerframework.checker.nullness.NullnessChecker")
+
+            processorPath(useClasspath: false) {
+                configurations.checkerFramework.files.each { file ->
+                    entry(name: file.toString())
+                }
+            }
+
+            // TODO generate this list
+            module(name: "bin")
+            module(name: "git-process")
+            module(name: "lib")
+        }
+
+        annotationProcessing[0].append profile
+
+        def javacSettings = new NodeBuilder().component(name: "JavacSettings") {
+            configurations.checkerFrameworkAnnotatedJDK.files.each { file ->
+                option(name: "ADDITIONAL_OPTIONS_STRING", value: "-Xbootclasspath/p:${file.toString()}")
+            }
+        }
+
+        provider.node.append javacSettings
+    }
 }

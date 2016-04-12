@@ -20,9 +20,8 @@ import org.apache.http.auth.AuthScope;
 import org.apache.http.auth.Credentials;
 import org.apache.http.client.CredentialsProvider;
 
-import javax.annotation.Nonnull;
+import javax.annotation.Nullable;
 import java.net.URI;
-import java.util.Optional;
 
 import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
 
@@ -34,11 +33,10 @@ import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
  * Currently only git-credential-osxkeychain is tested
  */
 public class CredentialHelperCredentialsProvider implements CredentialsProvider {
-    @Nonnull
     private final RemoteConfig remoteConfig;
 
 
-    public CredentialHelperCredentialsProvider(@Nonnull RemoteConfig remoteConfig) {
+    public CredentialHelperCredentialsProvider(RemoteConfig remoteConfig) {
         this.remoteConfig = remoteConfig;
     }
 
@@ -49,23 +47,24 @@ public class CredentialHelperCredentialsProvider implements CredentialsProvider 
     }
 
 
-    @SuppressWarnings("PointlessBooleanExpression")
+    @Nullable
     @Override
+    @SuppressWarnings("override.return.invalid")
     public Credentials getCredentials(AuthScope authscope) {
         if (authscope == null) return null;
 
+        @SuppressWarnings("argument.type.incompatible")
         URI uri = e(() -> new URI(authscope.getScheme(), null, authscope.getHost(), authscope.getPort(), null, null, null));
-        final Optional<String> credentialHelper = remoteConfig.credentialHelper(uri);
+        final String credentialHelper = remoteConfig.credentialHelper(uri);
 
-        if (credentialHelper.isPresent() == false) return null;
+        if (credentialHelper == null) return null;
 
-        final String credHelper = credentialHelper.get();
         final String progName;
-        if (credHelper.startsWith("/")) {
-            progName = credHelper;
+        if (credentialHelper.startsWith("/")) {
+            progName = credentialHelper;
         }
         else {
-            progName = "git-credential-" + credHelper;
+            progName = "git-credential-" + credentialHelper;
         }
 
         return null;

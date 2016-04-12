@@ -16,12 +16,12 @@
 package com.mooregreatsoftware.gitprocess.bin;
 
 import javaslang.control.Either;
-import javaslang.control.Option;
 import joptsimple.OptionParser;
 
 import javax.annotation.Nonnull;
 import java.io.PrintStream;
 
+import static javaslang.control.Either.left;
 import static javaslang.control.Either.right;
 
 /**
@@ -44,10 +44,8 @@ public class NewFeatureBranchOptions extends Options {
      */
     public static Either<String, NewFeatureBranchOptions> create(@Nonnull String[] args, @Nonnull PrintStream printStream) {
         NewFeatureBranchOptions newFeatureBranchOptions = new NewFeatureBranchOptions(printStream);
-        final Option<String> msgOption = newFeatureBranchOptions.parse(args);
-        return msgOption.
-            <Either<String, NewFeatureBranchOptions>>map(Either::left).
-            getOrElse(right(newFeatureBranchOptions));
+        final String msgOption = newFeatureBranchOptions.parse(args);
+        return msgOption != null ? left(msgOption) : right(newFeatureBranchOptions);
     }
 
 

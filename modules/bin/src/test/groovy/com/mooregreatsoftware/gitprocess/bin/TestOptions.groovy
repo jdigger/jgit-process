@@ -17,7 +17,6 @@ package com.mooregreatsoftware.gitprocess.bin
 
 import javaslang.Tuple2
 import javaslang.control.Either
-import javaslang.control.Option
 import joptsimple.OptionParser
 
 import javax.annotation.Nonnull
@@ -58,8 +57,8 @@ class TestOptions extends Options {
 
     static Tuple2<CharSequence, TestOptions> create(String[] args) {
         def testOptions = new TestOptions(System.out)
-        final Option<CharSequence> msgOption = testOptions.parse(args as String[]);
-        return Tuple2.of(msgOption.getOrElse(null), testOptions);
+        final String msgOption = testOptions.parse(args as String[]);
+        return Tuple2.of(msgOption, testOptions);
     }
 
 
