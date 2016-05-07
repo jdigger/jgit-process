@@ -246,7 +246,7 @@ abstract class GitSpecification extends Specification implements GitSpecHelper {
     @CompileStatic
     void resetHard(ref) {
         def resetHard = currentLib.branches().currentBranch().resetHard(ref as String)
-        if (resetHard.isPresent()) throw new IllegalStateException(resetHard.get())
+        if (resetHard != null) throw new IllegalStateException(resetHard)
     }
 
 

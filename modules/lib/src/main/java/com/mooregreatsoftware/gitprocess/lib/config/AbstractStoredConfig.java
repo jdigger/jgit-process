@@ -15,12 +15,13 @@
  */
 package com.mooregreatsoftware.gitprocess.lib.config;
 
+import javaslang.control.Try;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.eclipse.jgit.lib.StoredConfig;
 
 import javax.annotation.Nullable;
 
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.exceptionTranslator;
 
 public abstract class AbstractStoredConfig {
     protected final StoredConfig storedConfig;
@@ -58,7 +59,7 @@ public abstract class AbstractStoredConfig {
 
 
     protected void save() {
-        v(storedConfig::save);
+        Try.run(storedConfig::save).getOrElseThrow(exceptionTranslator());
     }
 
 }

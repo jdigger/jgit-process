@@ -15,7 +15,6 @@
  */
 package com.mooregreatsoftware.gitprocess.lib
 
-import groovy.transform.CompileStatic
 import spock.lang.Subject
 
 @Subject(Branch)
@@ -56,10 +55,10 @@ class BranchSpec extends GitSpecification {
         def differentBranch = createBranch("not_a_remote/master", "master")
 
         then:
-        master.remoteName().isPresent() == false
-        originMaster.remoteName().isPresent() == true
-        originMaster.remoteName().get() == "origin"
-        differentBranch.remoteName().isPresent() == false
+        master.remoteName() == null
+        originMaster.remoteName() != null
+        originMaster.remoteName() == "origin"
+        differentBranch.remoteName() == null
     }
 
 

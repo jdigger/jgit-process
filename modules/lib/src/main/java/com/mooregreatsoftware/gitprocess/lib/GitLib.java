@@ -38,6 +38,7 @@ import org.eclipse.jgit.lib.ObjectId;
 import org.eclipse.jgit.lib.Ref;
 import org.eclipse.jgit.lib.Repository;
 import org.eclipse.jgit.lib.StoredConfig;
+import org.eclipse.jgit.transport.FetchResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -45,8 +46,7 @@ import javax.annotation.Nonnull;
 import java.io.File;
 import java.io.IOException;
 
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.exceptionTranslator;
 import static javaslang.control.Either.left;
 
 /**
@@ -72,7 +72,7 @@ public class GitLib implements AutoCloseable {
         this.jgit = jgit;
 
         storedConfig = jgit.getRepository().getConfig();
-        v(storedConfig::load);
+        Try.run(storedConfig::load).getOrElseThrow(exceptionTranslator());
         this.remoteConfig = new StoredRemoteConfig(storedConfig, (remoteName, uri) -> {
             final RemoteAddCommand remoteAdd = jgit.remoteAdd();
             remoteAdd.setName(remoteName);
@@ -89,7 +89,7 @@ public class GitLib implements AutoCloseable {
     }
 
 
-//    @Deprecated // temporary convenience
+    //    @Deprecated // temporary convenience
     public Git jgit() {
         return this.jgit;
     }
@@ -139,14 +139,12 @@ public class GitLib implements AutoCloseable {
      * @param forcePush        should it force the push even if it can not fast-forward?
      * @param prePush          called before doing the push (may be null)
      * @param postPush         called after doing the push (may be null)
+     * @return Left(error message) or Right(resulting branch)
      * @see RemoteConfig#remoteName()
      * @see BranchConfig#integrationBranch()
      */
-    /**
-     * Merge with the integration branch then push to the server.
-     *
-     * @return Left(error message) or Right(resulting branch)
-     */
+    // TODO remove direct invocation of Pusher.push
+    @SuppressWarnings("unused")
     public Either<String, ThePushResult> push(Branch localBranch,
                                               String remoteBranchName,
                                               boolean forcePush,
@@ -177,13 +175,15 @@ public class GitLib implements AutoCloseable {
     private Either<String, @Nullable SimpleFetchResult> simpleFetchResult() {
         final String remoteName = (@NonNull String)remoteConfig().remoteName();
         LOG.info("Fetching latest from \"{}\"", remoteName);
-        return Try.of(() ->
-                jgit.fetch().
-                    setRemote(remoteName).
-                    setRemoveDeletedRefs(true).
-                    setTransportConfigCallback(new GitTransportConfigCallback()).
-                    call()
-        ).
+        final Try<FetchResult> fetchTry = Try.of(() ->
+            jgit.fetch().
+                setRemote(remoteName).
+                setRemoveDeletedRefs(true).
+                setTransportConfigCallback(new GitTransportConfigCallback()).
+                call()
+        );
+
+        return fetchTry.
             toEither().
             bimap(Throwable::toString, SimpleFetchResult::new).
             peek(sfr -> LOG.debug(sfr.toString()));
@@ -196,7 +196,7 @@ public class GitLib implements AutoCloseable {
     }
 
 
-//    @Deprecated // temporary convenience
+    //    @Deprecated // temporary convenience
     protected Repository repository() {
         return jgit.getRepository();
     }
@@ -229,7 +229,8 @@ public class GitLib implements AutoCloseable {
         final Branch currentBranch = branches().currentBranch();
         final String currentBranchName = currentBranch != null ? currentBranch.shortName() : "NONE";
         LOG.info("Adding \"{}\" into the index for \"{}\"", filepattern, currentBranchName);
-        return (@NonNull DirCache)e(() -> jgit.add().addFilepattern(filepattern).call());
+        return Try.of(() -> jgit.add().addFilepattern(filepattern).call()).
+            getOrElseThrow(exceptionTranslator());
     }
 
 
@@ -279,9 +280,9 @@ public class GitLib implements AutoCloseable {
     }
 
 
-    @SuppressWarnings("RedundantCast")
     public boolean hasUncommittedChanges() {
-        final Status status = (@NonNull Status)e(() -> jgit.status().call());
+        final Status status = Try.of(() -> jgit.status().call()).
+            getOrElseThrow(exceptionTranslator());
         return status.hasUncommittedChanges();
     }
 

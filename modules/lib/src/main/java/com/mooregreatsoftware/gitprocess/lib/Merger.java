@@ -16,17 +16,15 @@
 package com.mooregreatsoftware.gitprocess.lib;
 
 import javaslang.control.Either;
-import org.checkerframework.checker.nullness.qual.NonNull;
+import javaslang.control.Try;
 import org.eclipse.jgit.api.MergeResult;
 import org.eclipse.jgit.lib.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
 import static javaslang.control.Either.left;
 import static javaslang.control.Either.right;
 
-@SuppressWarnings("RedundantCast")
 public class Merger {
     private static final Logger LOG = LoggerFactory.getLogger(Merger.class);
 
@@ -40,12 +38,15 @@ public class Merger {
         final ObjectId startIntegrationOid = mergeBranch.objectId();
 
         LOG.debug("Merging \"{}\"({}) with \"{}\"({})", currentBranch.shortName(), startCurrentOid.abbreviate(7).name(), mergeBranch.shortName(), startIntegrationOid.abbreviate(7).name());
-        final MergeResult mergeResult = (@NonNull MergeResult)e(() ->
+
+        @SuppressWarnings("dereference.of.nullable")
+        final MergeResult mergeResult = Try.of(() ->
             gitLib.jgit().merge().
                 include(mergeBranch.objectId()).
                 setCommit(true).
-                setMessage("Sync merge from " + mergeBranch.shortName() + " into " + (currentBranch != null ? currentBranch.shortName() : null)).
-                call());
+                setMessage("Sync merge from " + mergeBranch.shortName() + " into " + currentBranch.shortName()).
+                call()).
+            getOrElseThrow(ExecUtils.exceptionTranslator());
 
         return mergeResult.getMergeStatus().isSuccessful() ?
             right(new SuccessfulMerge(mergeResult)) :

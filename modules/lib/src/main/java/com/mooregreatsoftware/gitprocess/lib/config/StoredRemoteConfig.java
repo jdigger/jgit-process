@@ -19,6 +19,7 @@ import com.jcraft.jsch.ConfigRepository;
 import com.jcraft.jsch.OpenSSHConfig;
 import com.mooregreatsoftware.gitprocess.config.RemoteConfig;
 import com.mooregreatsoftware.gitprocess.lib.StreamUtils;
+import javaslang.control.Try;
 import org.eclipse.jgit.api.errors.GitAPIException;
 import org.eclipse.jgit.lib.StoredConfig;
 import org.eclipse.jgit.transport.URIish;
@@ -39,7 +40,7 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.exceptionTranslator;
 import static org.eclipse.jgit.lib.Constants.DEFAULT_REMOTE_NAME;
 
 @SuppressWarnings("ConstantConditions")
@@ -110,6 +111,7 @@ public class StoredRemoteConfig extends AbstractStoredConfig implements RemoteCo
     }
 
 
+    @SuppressWarnings("OptionalUsedAsFieldOrParameterType")
     private void logFindRemoteName(Optional<String> firstRemote) {
         if (firstRemote.isPresent()) {
             LOG.warn("Do not have a \"{}\" branch so using the first remote " +
@@ -154,11 +156,13 @@ public class StoredRemoteConfig extends AbstractStoredConfig implements RemoteCo
 
 
     public RemoteConfig remoteAdd(String remoteName, URIish url) {
-        v(() -> remoteAdder.add(remoteName, url));
+        Try.run(() -> remoteAdder.add(remoteName, url)).
+            getOrElseThrow(exceptionTranslator());
         return this;
     }
 
 
+    // TODO Is this needed?
     public interface RemoteAdder {
         org.eclipse.jgit.transport.RemoteConfig add(String remoteName, URIish uri) throws GitAPIException;
     }

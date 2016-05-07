@@ -33,6 +33,7 @@ import org.eclipse.jgit.transport.ChainingCredentialsProvider;
 import org.eclipse.jgit.transport.NetRCCredentialsProvider;
 import org.eclipse.jgit.transport.PushResult;
 import org.eclipse.jgit.transport.RefSpec;
+import org.eclipse.jgit.transport.RemoteRefUpdate;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,19 +53,14 @@ public class Pusher {
 
 
     public static class PusherOptions {
-        @NonNull
         public final GitLib gitLib;
-        @NonNull
         public final Branch localBranch;
-        @NonNull
         public final String remoteBranchName;
-        @Nullable
-        public final CheckedRunnable prePush;
-        @Nullable
-        public final CheckedRunnable postPush;
+        public final @Nullable CheckedRunnable prePush;
+        public final @Nullable CheckedRunnable postPush;
 
 
-        public PusherOptions(@NonNull GitLib gitLib, @NonNull Branch localBranch, @NonNull String remoteBranchName,
+        public PusherOptions(GitLib gitLib, Branch localBranch, String remoteBranchName,
                              @Nullable CheckedRunnable prePush, @Nullable CheckedRunnable postPush) {
             this.gitLib = gitLib;
             this.localBranch = localBranch;
@@ -74,14 +70,13 @@ public class Pusher {
         }
 
 
-        public static Builder from(@NonNull GitLib gitLib) {
+        public static Builder from(GitLib gitLib) {
             return new Builder(gitLib);
         }
 
 
         @SuppressWarnings({"unused", "RedundantCast"})
         public static class Builder {
-            @NonNull
             private GitLib gitLib;
             @MonotonicNonNull
             private Branch localBranch = null;
@@ -99,7 +94,6 @@ public class Pusher {
             }
 
 
-            @NonNull
             public PusherOptions build() throws IllegalStateException {
                 if (localBranch == null) throw new IllegalStateException("localBranch == null");
                 if (remoteBranchName == null) throw new IllegalStateException("remoteBranchName == null");
@@ -107,14 +101,12 @@ public class Pusher {
             }
 
 
-            @NonNull
             public Builder localBranch(@NonNull Branch localBranch) {
                 this.localBranch = localBranch;
                 return (@NonNull Builder)this;
             }
 
 
-            @NonNull
             public Builder localBranch(@NonNull String localBranchName) throws IllegalArgumentException {
                 final Branch branch = gitLib.branches().branch(localBranchName);
                 if (branch == null)
@@ -124,21 +116,18 @@ public class Pusher {
             }
 
 
-            @NonNull
             public Builder remoteBranchName(@NonNull String remoteBranchName) {
                 this.remoteBranchName = remoteBranchName;
                 return (@NonNull Builder)this;
             }
 
 
-            @NonNull
             public Builder prePush(@Nullable CheckedRunnable prePush) {
                 this.prePush = prePush;
                 return (@NonNull Builder)this;
             }
 
 
-            @NonNull
             public Builder postPush(@Nullable CheckedRunnable postPush) {
                 this.postPush = postPush;
                 return (@NonNull Builder)this;
@@ -146,7 +135,6 @@ public class Pusher {
         }
     }
 
-    @NonNull
     private PusherOptions options;
     private boolean forcePush;
 
@@ -161,20 +149,19 @@ public class Pusher {
                                 Branch localBranch,
                                 String remoteBranchName,
                                 boolean forcePush,
-                                @javax.annotation.Nullable CheckedRunnable prePush,
-                                @javax.annotation.Nullable CheckedRunnable postPush) {
-        return new Pusher(PusherOptions.from(gitLib).localBranch(localBranch).remoteBranchName(remoteBranchName).prePush(prePush).postPush(postPush).build(), forcePush);
+                                @Nullable CheckedRunnable prePush,
+                                @Nullable CheckedRunnable postPush) {
+        PusherOptions options = PusherOptions.from(gitLib).
+            localBranch(localBranch).
+            remoteBranchName(remoteBranchName).
+            prePush(prePush).
+            postPush(postPush).
+            build();
+        return new Pusher(options, forcePush);
     }
 
 
     // TODO: Create a version that does force-push with lease
-
-
-    public static Pusher create(GitLib gitLib,
-                                Branch localBranch,
-                                String remoteBranchName) {
-        return new Pusher(PusherOptions.from(gitLib).localBranch(localBranch).remoteBranchName(remoteBranchName).build(), false);
-    }
 
 
     public Either<String, ThePushResult> push() {
@@ -217,7 +204,7 @@ public class Pusher {
 
             if (prePush != null) {
                 LOG.debug("Running pre-push function");
-                final @NonNull Try<Void> prePushTry = Try.run(prePush);
+                final Try<Void> prePushTry = Try.run(prePush);
                 if (prePushTry.isFailure()) return left(ExecUtils.toString(prePushTry.getCause()));
                 LOG.debug("Ran pre-push function");
             }
@@ -231,8 +218,8 @@ public class Pusher {
             final Branch remoteBranch = gitLib.branches().branch(remoteName + "/" + remoteBranchName);
             LOG.debug("Expected OID of remote branch is {}", remoteBranch != null ? remoteBranch.objectId().abbreviate(7).name() : "UNKNOWN");
 
-            final ThePushResult thePushResult = doGitProgPush(gitLib, localBranch, remoteBranchName, forcePush, remoteName);
-//            final SimplePushResult simplePushResult = doJGitPush(gitLib, localBranch, remoteBranchName, forcePush, remoteName);
+//            final ThePushResult thePushResult = doGitProgPush(gitLib, localBranch, remoteBranchName, forcePush, remoteName);
+            final ThePushResult thePushResult = doJGitPush(gitLib, localBranch, remoteBranchName, forcePush, remoteName);
 
             // TODO: Implement --force-with-lease
 
@@ -246,7 +233,9 @@ public class Pusher {
             if (postPush != null) {
                 LOG.debug("Running post-push function");
                 final Try<Void> postPushTry = Try.run(postPush);
-                if (postPushTry.isFailure()) return left(ExecUtils.toString(postPushTry.getCause()));
+                if (postPushTry.isFailure()) {
+                    return left(ExecUtils.toString(postPushTry.getCause()));
+                }
                 LOG.debug("Ran post-push function");
             }
             else {
@@ -268,6 +257,7 @@ public class Pusher {
     }
 
 
+    @SuppressWarnings("unused")
     private static ThePushResult doGitProgPush(GitLib gitLib, Branch localBranch, String remoteBranchName, boolean forcePush, String remoteName) {
         String cmd = String.format("git push --porcelain %s %s %s:%s", remoteName, forcePush ? "--force" : "", localBranch.shortName(), remoteBranchName);
         CommandLine commandLine = CommandLine.parse(cmd);
@@ -299,13 +289,13 @@ public class Pusher {
 
     private static ThePushResult doJGitPush(GitLib gitLib, Branch localBranch, String remoteBranchName, boolean forcePush, String remoteName) {
         final Iterable<PushResult> pushResults = Try.of(() ->
-                gitLib.jgit().push().
-                    setRemote(remoteName).
-                    setRefSpecs(new RefSpec(localBranch.shortName() + ":" + remoteBranchName)).
-                    setForce(forcePush).
-                    setCredentialsProvider(new ChainingCredentialsProvider(new NetRCCredentialsProvider())).
-                    setTransportConfigCallback(new GitTransportConfigCallback()).
-                    call()
+            gitLib.jgit().push().
+                setRemote(remoteName).
+                setRefSpecs(new RefSpec(localBranch.shortName() + ":" + remoteBranchName)).
+                setForce(forcePush).
+                setCredentialsProvider(new ChainingCredentialsProvider(new NetRCCredentialsProvider())).
+                setTransportConfigCallback(new GitTransportConfigCallback()).
+                call()
         ).get();
         return new JGitPushResult(pushResults);
     }
@@ -352,6 +342,25 @@ public class Pusher {
 
         public JGitPushResult(Iterable<PushResult> pushResults) {
             this.pushResults = pushResults;
+            this.success = allPushesSuccessful(pushResults);
+        }
+
+
+        private static boolean allPushesSuccessful(Iterable<PushResult> pushResults) {
+            return StreamUtils.stream(pushResults).
+                allMatch(JGitPushResult::pushResultSuccessful);
+        }
+
+
+        private static boolean pushResultSuccessful(PushResult res) {
+            return res.getRemoteUpdates().stream().
+                allMatch(JGitPushResult::goodStatus);
+        }
+
+
+        private static boolean goodStatus(RemoteRefUpdate refUpd) {
+            final RemoteRefUpdate.Status status = refUpd.getStatus();
+            return status == RemoteRefUpdate.Status.OK || status == RemoteRefUpdate.Status.UP_TO_DATE;
         }
 
 

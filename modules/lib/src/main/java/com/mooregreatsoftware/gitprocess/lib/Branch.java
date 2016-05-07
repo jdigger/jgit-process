@@ -31,11 +31,10 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.Objects;
-import java.util.Optional;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.StreamSupport;
 
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.exceptionTranslator;
 import static org.eclipse.jgit.api.ResetCommand.ResetType.HARD;
 import static org.eclipse.jgit.lib.Constants.R_HEADS;
 import static org.eclipse.jgit.lib.Constants.R_REFS;
@@ -47,7 +46,7 @@ import static org.eclipse.jgit.lib.Constants.R_REMOTES;
 /**
  * A branch in Git that guarantees that references are valid.
  */
-@SuppressWarnings("RedundantCast")
+@SuppressWarnings({"RedundantCast", "RedundantTypeArguments"})
 public class Branch {
     private static final Logger LOG = LoggerFactory.getLogger(Branch.class);
 
@@ -79,7 +78,8 @@ public class Branch {
             throw new IllegalArgumentException("\"" + name + "\" is not a valid branch name");
         }
 
-        final Ref ref = ExecUtils.<@Nullable Ref>e(() -> gitLib.repository().findRef(refName));
+        final Ref ref = Try.<@Nullable Ref>of(() -> gitLib.repository().findRef(refName)).
+            getOrElseThrow(exceptionTranslator());
 
         if (ref == null)
             throw new IllegalArgumentException(name + " is not a known reference name in " + gitLib.repository().getAllRefs());
@@ -119,7 +119,7 @@ public class Branch {
      * @return null if there is not a valid remote name in the branch name
      */
     @Pure
-    private static @Nullable String remoteName(@NonNull GitLib gitLib, @NonNull String shortName) {
+    private static @Nullable String remoteName(GitLib gitLib, String shortName) {
         final int idx = shortName.indexOf("/");
         if (idx > 0) { // may be a remote branch
             final String firstPart = shortName.substring(0, idx);
@@ -154,12 +154,11 @@ public class Branch {
      * @see #remoteName()
      */
     @Pure
-    @NonNull
     public String simpleName() {
         if (isRemote()) {
-            final String shortName = shortName();
-            final String remoteName = (@NonNull String)remoteName(gitLib, shortName);
-            return shortName.substring(remoteName.length() + 1);
+            final String remoteName = remoteName(gitLib, shortName());
+            if (remoteName == null) throw new IllegalStateException("remoteName == null");
+            return shortName().substring(remoteName.length() + 1);
         }
         else {
             return shortName();
@@ -172,12 +171,11 @@ public class Branch {
      * If the part that is in the "remote" position of the short name is not *actually* a remote name,
      * it is not returned. e.g., "not_a_remote/master" -> empty()
      *
-     * @return empty() if there's no remote part to the name matching an existing remote name
+     * @return null if there's no remote part to the name matching an existing remote name
      * @see RemoteConfig#remoteNames()
      */
-    @NonNull
-    public Optional<@NonNull String> remoteName() {
-        return isRemote() ? Optional.ofNullable(remoteName(gitLib, shortName())) : Optional.<String>empty();
+    public @Nullable String remoteName() {
+        return isRemote() ? remoteName(gitLib, shortName()) : null;
     }
 
 
@@ -195,7 +193,6 @@ public class Branch {
      * <p>
      * For example, instead of "origin/master" this returns "refs/remotes/origin/master"
      */
-    @NonNull
     public String name() {
         return refName;
     }
@@ -206,18 +203,20 @@ public class Branch {
      * <p>
      * For example, instead of "refs/remotes/origin/master" this returns "origin/master"
      */
-    @NonNull
     public String shortName() {
         return Repository.shortenRefName(name());
     }
 
 
-    public @NonNull ObjectId objectId() {
+    public ObjectId objectId() {
         return Try.of(() -> ((@NonNull ObjectId)gitLib.jgit().getRepository().resolve(refName))).get();
     }
 
 
-    @NonNull
+    /**
+     * The 7-digit SHA-1 for the head of the branch.
+     */
+    @SuppressWarnings("unused")
     public String sha() {
         return objectId().abbreviate(7).name();
     }
@@ -240,13 +239,13 @@ public class Branch {
      * @param otherBranch the name of the other branch
      * @return does the tip of the other branch must appear somewhere in the history of this branch?
      */
-    public boolean containsAllOf(@NonNull Branch otherBranch) {
+    public boolean containsAllOf(Branch otherBranch) {
         LOG.debug("{}.containsAllOf({})", this, otherBranch);
         return contains(otherBranch.objectId());
     }
 
 
-    public boolean contains(@NonNull ObjectId oid) {
+    public boolean contains(ObjectId oid) {
         LOG.debug("{}.contains({})", this, oid.abbreviate(7).name());
         return Try.of(() -> {
             final RevWalk walk = new RevWalk(gitLib.repository());
@@ -264,13 +263,11 @@ public class Branch {
     }
 
 
-    @NonNull
     public Either<String, Branch> checkout() {
         return gitLib.checkout(this).map(r -> this);
     }
 
 
-    @NonNull
     public Branch upstream(Branch upstream) {
         gitLib.branchConfig().setUpstream(this, upstream);
         return this;
@@ -306,7 +303,6 @@ public class Branch {
      *
      * @return Left(error message) Right(the object ID, if it exists)
      */
-    @NonNull
     public Either<String, @Nullable ObjectId> lastSyncedAgainst() {
         // TODO: Support reading the legacy control file
         final Either<String, @Nullable ObjectId> idEither =
@@ -322,13 +318,11 @@ public class Branch {
     /**
      * Returns the previous remote sha ONLY IF it is not the same as the new remote sha; otherwise null
      */
-    @SuppressWarnings("PointlessBooleanExpression")
-    @javax.annotation.Nullable
-    public ObjectId previousRemoteOID() {
-        if (gitLib.remoteConfig().hasRemotes() == false) return null;
+    public @Nullable ObjectId previousRemoteOID() {
+        if (!gitLib.remoteConfig().hasRemotes()) return null;
 
         final Either<String, @Nullable ObjectId> recordedIdEither = lastSyncedAgainst();
-        final @Nullable ObjectId oldSha = recordedIdEither.<@Nullable ObjectId>map(id -> id != null ? id : remoteOID()).getOrElse(this::remoteOID);
+        final ObjectId oldSha = recordedIdEither.<@Nullable ObjectId>map(id -> id != null ? id : remoteOID()).getOrElse(this::remoteOID);
 
         final Either<String, @Nullable SimpleFetchResult> fetch = gitLib.fetch();
         if (fetch.isLeft()) {
@@ -357,42 +351,23 @@ public class Branch {
     }
 
 
-    /**
-     * Has the remote changed since the last time {@link #recordLastSyncedAgainst()} was run, or the last time a fetch
-     * was done if there is no record for last sync.
-     */
-    public boolean remoteHasChanged() {
-        return previousRemoteOID() != null;
-    }
-
-
     @Nullable
     public ObjectId remoteOID() {
-        return remoteOIDSupplier().get();
+        if (!gitLib.remoteConfig().hasRemotes()) return null;
+
+        final String remoteBranchName = gitLib.remoteConfig().remoteBranchName(shortName());
+        if (remoteBranchName == null) return null;
+
+        final Branch branch = gitLib.branches().branch((@NonNull String)remoteBranchName);
+        return branch != null ? branch.objectId() : null;
     }
 
 
     @Nullable
-    @SuppressWarnings("PointlessBooleanExpression")
     public String remoteBranchName() {
-        if (gitLib.remoteConfig().hasRemotes() == false) return null;
+        if (!gitLib.remoteConfig().hasRemotes()) return null;
 
         return gitLib.remoteConfig().remoteBranchName(shortName());
-    }
-
-
-    @NonNull
-    @SuppressWarnings("PointlessBooleanExpression")
-    private Supplier<@Nullable ObjectId> remoteOIDSupplier() {
-        if (gitLib.remoteConfig().hasRemotes() == false) return () -> null;
-
-        final String remoteBranchName = gitLib.remoteConfig().remoteBranchName(shortName());
-        if (remoteBranchName == null) return () -> null;
-
-        return () -> {
-            final Branch branch = gitLib.branches().branch((@NonNull String)remoteBranchName);
-            return branch != null ? branch.objectId() : null;
-        };
     }
 
 
@@ -400,13 +375,13 @@ public class Branch {
      * Do a hard reset on this branch to the given reference
      *
      * @param ref the reference to reset the working directory and index to
-     * @return an error message, or empty() if it worked
+     * @return an error message, or null if it worked
      */
-    @NonNull
-    public Optional<String> resetHard(String ref) {
-        return Try.of(() ->
-                gitLib.jgit().reset().setMode(HARD).setRef(ref).call()
-        ).map(r -> Optional.<String>empty()).getOrElseGet(t -> Optional.of(t.toString()));
+    @Nullable
+    public String resetHard(String ref) {
+        return Try.of(() -> gitLib.jgit().reset().setMode(HARD).setRef(ref).call()).
+            <@Nullable String>map(r -> null).
+            getOrElseGet(Throwable::toString);
     }
 
 

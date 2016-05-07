@@ -15,15 +15,11 @@
  */
 package com.mooregreatsoftware.gitprocess.lib;
 
-import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.dataflow.qual.Pure;
-import org.eclipse.jgit.annotations.Nullable;
-import org.eclipse.jgit.api.errors.GitAPIException;
 
-import java.io.IOException;
 import java.io.PrintWriter;
 import java.io.StringWriter;
-import java.util.concurrent.Callable;
+import java.util.function.Function;
 
 /**
  * Functions to make it more convenient to execute functions, such as wrapping lambdas.
@@ -31,54 +27,10 @@ import java.util.concurrent.Callable;
 public final class ExecUtils {
 
     /**
-     * Executes the {@link Callable}, wrapping any checked exceptions in either a {@link IllegalStateException} or
-     * {@link RuntimeException}.
-     * <p>
-     * Acts like {@link #v(ExceptionAction)} but returns a value.
-     *
-     * @param callable what to run
-     * @param <T>      what to return
+     * Returns the Throwable as a String, including its stack trace
      */
-    @Nullable
-    public static <T> T e(@NonNull Callable<T> callable) {
-        try {
-            return callable.call();
-        }
-        catch (GitAPIException | IOException e) {
-            throw new IllegalStateException(e);
-        }
-        catch (Exception e) {
-            if (e instanceof RuntimeException) throw (RuntimeException)e;
-            else throw new RuntimeException(e);
-        }
-    }
-
-
-    /**
-     * Executes the {@link Callable}, wrapping any checked exceptions in either a {@link IllegalStateException} or
-     * {@link RuntimeException}.
-     * <p>
-     * Acts like {@link #e(Callable)} but does not return a value.
-     *
-     * @param callable what to run
-     * @see #e(Callable)
-     */
-    public static void v(@NonNull ExceptionAction callable) {
-        try {
-            callable.call();
-        }
-        catch (GitAPIException | IOException e) {
-            throw new IllegalStateException(e);
-        }
-        catch (Exception e) {
-            if (e instanceof RuntimeException) throw (RuntimeException)e;
-            else throw new RuntimeException(e);
-        }
-    }
-
-
     @Pure
-    public static @NonNull String toString(final @NonNull Throwable throwable) {
+    public static String toString(Throwable throwable) {
         final StringWriter sw = new StringWriter();
         final PrintWriter pw = new PrintWriter(sw, true);
         pw.println(throwable.toString());
@@ -88,10 +40,12 @@ public final class ExecUtils {
 
 
     /**
-     * Similar interface as {@link Callable} but does not return anything. Used for {@link ExecUtils#v(ExceptionAction)}
+     * A function that will wrap a non-RuntimeException with an IllegalStateException. If it's already a
+     * RuntimeException, leave it alone.
      */
-    public interface ExceptionAction {
-        void call() throws Exception;
+    @Pure
+    public static Function<Throwable, RuntimeException> exceptionTranslator() {
+        return exp -> (exp instanceof RuntimeException) ? (RuntimeException)exp : new IllegalStateException(exp);
     }
 
 }

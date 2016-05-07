@@ -15,15 +15,15 @@
  */
 package com.mooregreatsoftware.gitprocess.bin;
 
+import com.mooregreatsoftware.gitprocess.lib.ExecUtils;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
 import javaslang.control.Either;
+import javaslang.control.Try;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 
 import java.io.File;
-
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
 
 /**
  * The base class for the CLI commands to extend from. Provides handling of standard functionality.
@@ -52,9 +52,9 @@ public abstract class AbstractRunner<O extends Options, M extends CharSequence, 
     /**
      * Returns in instance of {@link GitLib} set to the current directory (i.e., ".")
      */
-    @SuppressWarnings("RedundantCast")
     protected static GitLib createCurrentDirGitLib() {
-        return (@NonNull GitLib)e(() -> GitLib.of(new File(".")));
+        return Try.of(() -> GitLib.of(new File("."))).
+            getOrElseThrow(ExecUtils.exceptionTranslator());
     }
 
 

@@ -39,7 +39,7 @@ import java.util.List;
 import java.util.Optional;
 
 import static com.mooregreatsoftware.gitprocess.bin.ReadVersionFromClasspath.version;
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.exceptionTranslator;
 import static java.util.Arrays.asList;
 import static java.util.Optional.empty;
 
@@ -198,7 +198,8 @@ public abstract class Options {
             }
 
             consoleAppender.setEncoder(layoutEncoder);
-            v(() -> layoutEncoder.init(consoleAppender.getOutputStream()));
+            Try.run(() -> layoutEncoder.init(consoleAppender.getOutputStream())).
+                getOrElseThrow(exceptionTranslator());
 
             layoutEncoder.stop();
             layoutEncoder.start();

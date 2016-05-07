@@ -24,13 +24,11 @@ import org.eclipse.jgit.lib.Ref;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.List;
 import java.util.stream.Collectors;
 
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.e;
-import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.v;
+import static com.mooregreatsoftware.gitprocess.lib.ExecUtils.exceptionTranslator;
 import static org.eclipse.jgit.lib.Constants.HEAD;
 import static org.eclipse.jgit.lib.Constants.R_REFS;
 
@@ -38,11 +36,10 @@ import static org.eclipse.jgit.lib.Constants.R_REFS;
 public class DefaultBranches implements Branches {
     private static final Logger LOG = LoggerFactory.getLogger(DefaultBranches.class);
 
-    @NonNull
     private final GitLib gitLib;
 
 
-    public DefaultBranches(@Nonnull GitLib gitLib) {
+    public DefaultBranches(GitLib gitLib) {
         this.gitLib = gitLib;
     }
 
@@ -62,7 +59,6 @@ public class DefaultBranches implements Branches {
     }
 
 
-    @NonNull
     @Override
     public BranchConfig config() {
         return gitLib.branchConfig();
@@ -70,44 +66,45 @@ public class DefaultBranches implements Branches {
 
 
     @Override
-    public @Nullable Branch branch(@Nonnull String branchName) {
+    public @Nullable Branch branch(String branchName) {
         final Ref ref = ref(branchName);
         return (ref == null) ? null : Branch.of(gitLib, ref.getName());
     }
 
 
-    @Nonnull
     @Override
     // TODO don't allow creating a remote branch "shadow"
-    public Branch createBranch(@Nonnull String branchName, @Nonnull Branch baseBranch) throws BranchAlreadyExists {
+    public Branch createBranch(String branchName, Branch baseBranch) throws BranchAlreadyExists {
         if (branch(branchName) != null) throw new BranchAlreadyExists(branchName);
 
         LOG.info("Creating branch \"{}\" based on \"{}\"", branchName, baseBranch.shortName());
-        v(() -> gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call());
+        Try.run(() -> gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call()).
+            getOrElseThrow(exceptionTranslator());
 
         return (@NonNull Branch)branch(branchName);
     }
 
 
-    @Nonnull
     @Override
     // TODO Add support for removing a remote branch
-    public Branches removeBranch(@Nonnull Branch branch) {
+    public Branches removeBranch(Branch branch) {
         LOG.info("Removing branch \"{}\"", branch.shortName());
-        v(() -> gitLib.jgit().branchDelete().setBranchNames(branch.name()).setForce(true).call());
+        Try.run(() -> gitLib.jgit().branchDelete().setBranchNames(branch.name()).setForce(true).call()).
+            getOrElseThrow(exceptionTranslator());
         return this;
     }
 
 
-    @Nonnull
     @Override
-    public Iterator<@NonNull Branch> allBranches() {
+    public Iterator<Branch> allBranches() {
         // this may get expensive if there are a LOT of branches; fortunately it can be implemented to not do so
         // without breaking the API
-        return ((@NonNull List<Ref>)e(() -> gitLib.jgit().branchList().setListMode(ListMode.ALL).call())).
+        List<Ref> branches = Try.of(() -> gitLib.jgit().branchList().setListMode(ListMode.ALL).call()).
+            getOrElseThrow(exceptionTranslator());
+        return branches.
             stream().
             map(ref -> (@NonNull Branch)branch(ref.getName())).
-            collect(Collectors.<@NonNull Branch>toList()).<@NonNull Branch>listIterator();
+            collect(Collectors.<@NonNull Branch>toList()).listIterator();
     }
 
 }

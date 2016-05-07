@@ -19,7 +19,6 @@ import com.mooregreatsoftware.gitprocess.config.BranchConfig;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 
-import javax.annotation.Nonnull;
 import java.util.Iterator;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -30,6 +29,7 @@ import static com.mooregreatsoftware.gitprocess.config.BranchConfig.PARKING_BRAN
  * The "container" for branches, this gives easy access to the most important branches (current, integration,
  * parking, etc.) as well as all the other branches.
  */
+@SuppressWarnings("RedundantTypeArguments")
 public interface Branches {
 
     @Nullable Branch currentBranch();
@@ -48,7 +48,6 @@ public interface Branches {
     /**
      * The "parking" branch
      */
-    @Nonnull
     default Branch parking() {
         // return the parking branch if it exists, otherwise create it based on the integration branch
         final Branch parkingBranch = branch(PARKING_BRANCH_NAME);
@@ -61,7 +60,6 @@ public interface Branches {
     /**
      * The configuration for branches
      */
-    @Nonnull
     BranchConfig config();
 
     /**
@@ -87,8 +85,7 @@ public interface Branches {
      * @see #integrationBranch()
      * @see BranchConfig#integrationBranch()
      */
-    @Nonnull
-    default Branches integrationBranch(@Nonnull Branch branch) {
+    default Branches integrationBranch(Branch branch) {
         config().integrationBranch(branch);
         return this;
     }
@@ -101,8 +98,7 @@ public interface Branches {
      * @return the new branch
      * @throws BranchAlreadyExists if the branch already exists
      */
-    @Nonnull
-    Branch createBranch(@Nonnull String branchName, @Nonnull Branch baseBranch) throws BranchAlreadyExists;
+    Branch createBranch(String branchName, Branch baseBranch) throws BranchAlreadyExists;
 
 
     /**
@@ -114,8 +110,7 @@ public interface Branches {
      * @throws IllegalArgumentException if the baseBranchName does not exist
      * @throws BranchAlreadyExists      if the branch already exists
      */
-    @Nonnull
-    default Branch createBranch(@Nonnull String branchName, @Nonnull String baseBranchName) throws BranchAlreadyExists {
+    default Branch createBranch(String branchName, String baseBranchName) throws BranchAlreadyExists {
         final Branch baseBranch = branch(baseBranchName);
         if (baseBranch == null)
             throw new IllegalArgumentException("Could not find branch named \"" + baseBranchName + "\"");
@@ -128,25 +123,22 @@ public interface Branches {
      *
      * @param branchName the name of the branch to return, or null if it doesn't exist
      */
-    @Nullable Branch branch(@Nonnull String branchName);
+    @Nullable Branch branch(String branchName);
 
 
-    @Nonnull
     Iterator<Branch> allBranches();
 
 
-    @Nonnull
     default Iterator<Branch> remoteBranches() {
         return StreamUtils.stream(allBranches()).filter(Branch::isRemote).collect(Collectors.<@NonNull Branch>toList()).listIterator();
     }
 
 
-    @Nonnull
     default Iterator<Branch> localBranches() {
         return StreamUtils.stream(allBranches()).filter(branch -> !branch.isRemote()).collect(Collectors.<@NonNull Branch>toList()).listIterator();
     }
 
-    Branches removeBranch(@Nonnull Branch baseBranch);
+    Branches removeBranch(Branch baseBranch);
 
     final class BranchAlreadyExists extends RuntimeException {
         public BranchAlreadyExists(String branchName) {

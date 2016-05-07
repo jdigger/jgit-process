@@ -19,7 +19,9 @@ import com.jcabi.github.RtGithub;
 import com.jcabi.http.Request;
 import com.jcabi.http.Response;
 import com.jcabi.http.response.JsonResponse;
+import com.mooregreatsoftware.gitprocess.lib.ExecUtils;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
+import com.mooregreatsoftware.gitprocess.lib.Network;
 import javaslang.control.Try;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
@@ -36,13 +38,10 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.io.PrintStream;
-import java.net.InetAddress;
-import java.net.NetworkInterface;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.Optional;
-import java.util.function.Function;
 
 import static java.net.HttpURLConnection.HTTP_CREATED;
 import static java.net.HttpURLConnection.HTTP_UNAUTHORIZED;
@@ -107,7 +106,7 @@ public class Authorizer {
                 return jsonReader.readObject().getString("token");
             }
             throw new IllegalStateException(resp.toString());
-        }).getOrElseThrow(exceptionTranslator());
+        }).getOrElseThrow(ExecUtils.exceptionTranslator());
     }
 
 
@@ -123,15 +122,10 @@ public class Authorizer {
     }
 
 
-    private static Function<Throwable, RuntimeException> exceptionTranslator() {
-        return exp -> (exp instanceof RuntimeException) ? (RuntimeException)exp : new IllegalStateException(exp);
-    }
-
-
     private JsonObject oathTokenPostBody() {
         @SuppressWarnings("argument.type.incompatible")
         final JsonBuilderFactory factory = Json.createBuilderFactory(null);
-        final String note = String.format("Git-Process for %s on %s", gitLib.remoteConfig().repositoryName(), macAddress());
+        final String note = String.format("Git-Process for %s on %s", gitLib.remoteConfig().repositoryName(), Network.macAddress());
         final String fingerprint = fingerprint(note);
         return factory.createObjectBuilder().
             add("scopes", factory.createArrayBuilder().add("repo")).
@@ -157,7 +151,7 @@ public class Authorizer {
                 }
                 return request.fetch();
             }
-        ).getOrElseThrow(exceptionTranslator());
+        ).getOrElseThrow(ExecUtils.exceptionTranslator());
     }
 
 
@@ -165,39 +159,8 @@ public class Authorizer {
         return Try.of(() -> {
             final MessageDigest digest = MessageDigest.getInstance("SHA-256");
             final byte[] hash = digest.digest(note.getBytes(StandardCharsets.UTF_8));
-            return toHex(hash, false);
-        }).getOrElseThrow(exceptionTranslator());
-    }
-
-
-    private String macAddress() {
-        return Try.of(() -> {
-            final long startLocalhost = System.currentTimeMillis();
-            final InetAddress ip = InetAddress.getLocalHost();
-            final long endLocalhost = System.currentTimeMillis();
-            if ((endLocalhost - startLocalhost) > 1_000L) {
-                LOG.warn("It took a long time to get the localhost entry.\n" +
-                    "Your /etc/hosts likely needs to be updated to something like\n" +
-                    "127.0.0.1\tlocalhost\t{}\n" +
-                    "::1\tlocalhost\t{}", ip.getHostName(), ip.getHostName());
-            }
-            LOG.debug("Current IP address : {}", ip.getHostAddress());
-
-            final NetworkInterface network = NetworkInterface.getByInetAddress(ip);
-
-            final byte[] mac = network.getHardwareAddress();
-
-            return mac != null ? toHex(mac, true) : ip.getHostName();
-        }).getOrElseThrow(exceptionTranslator());
-    }
-
-
-    private static String toHex(byte[] mac, boolean dashDelim) {
-        final StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < mac.length; i++) {
-            sb.append(String.format("%02X%s", mac[i], (dashDelim && i < mac.length - 1) ? "-" : ""));
-        }
-        return sb.toString();
+            return Network.toHex(hash, false);
+        }).getOrElseThrow(ExecUtils.exceptionTranslator());
     }
 
 
@@ -228,7 +191,7 @@ public class Authorizer {
         }
 
         final String userInput = Try.of(input::readLine).
-            getOrElseThrow(exceptionTranslator()).trim();
+            getOrElseThrow(ExecUtils.exceptionTranslator()).trim();
 
         if ("".equals(userInput)) { // they just hit RETURN
             return guessedUsername != null ? guessedUsername : askForUsername(null);
@@ -256,7 +219,7 @@ public class Authorizer {
         this.out.printf("Password: ");
 
         final String userInput = Try.of(input::readLine).
-            getOrElseThrow(exceptionTranslator()).trim();
+            getOrElseThrow(ExecUtils.exceptionTranslator()).trim();
 
         if ("".equals(userInput)) { // they just hit RETURN
             return askForPassword();
@@ -275,7 +238,7 @@ public class Authorizer {
         this.out.printf("Two Factor Token: ");
 
         final String userInput = Try.of(input::readLine).
-            getOrElseThrow(exceptionTranslator()).trim();
+            getOrElseThrow(ExecUtils.exceptionTranslator()).trim();
 
         if ("".equals(userInput)) { // they just hit RETURN
             return askForPassword();
