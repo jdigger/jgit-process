@@ -58,11 +58,6 @@ public interface Branches {
     }
 
     /**
-     * The configuration for branches
-     */
-    BranchConfig config();
-
-    /**
      * The integration branch. For purely local development, this is typically "master", and for shared development
      * this is typically "origin/master".
      * <p>
@@ -73,9 +68,7 @@ public interface Branches {
      * @see BranchConfig#integrationBranch(Branch)
      */
     @Nullable
-    default Branch integrationBranch() {
-        return config().integrationBranch();
-    }
+    Branch integrationBranch();
 
     /**
      * Sets (and writes to git configuration) the integration branch to use.
@@ -85,10 +78,7 @@ public interface Branches {
      * @see #integrationBranch()
      * @see BranchConfig#integrationBranch()
      */
-    default Branches integrationBranch(Branch branch) {
-        config().integrationBranch(branch);
-        return this;
-    }
+    Branches integrationBranch(Branch branch);
 
     /**
      * Creates the given branch based on "baseBranch".

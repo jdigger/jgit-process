@@ -17,6 +17,7 @@ package com.mooregreatsoftware.gitprocess.bin;
 
 import com.mooregreatsoftware.gitprocess.lib.ExecUtils;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
+import com.mooregreatsoftware.gitprocess.lib.JgitGitLib;
 import javaslang.control.Either;
 import javaslang.control.Try;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
@@ -50,10 +51,10 @@ public abstract class AbstractRunner<O extends Options, M extends CharSequence, 
 
 
     /**
-     * Returns in instance of {@link GitLib} set to the current directory (i.e., ".")
+     * Returns in instance of {@link JgitGitLib} set to the current directory (i.e., ".")
      */
     protected static GitLib createCurrentDirGitLib() {
-        return Try.of(() -> GitLib.of(new File("."))).
+        return Try.of(() -> JgitGitLib.of(new File("."))).
             getOrElseThrow(ExecUtils.exceptionTranslator());
     }
 

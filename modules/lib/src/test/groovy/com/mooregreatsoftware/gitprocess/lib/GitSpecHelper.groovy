@@ -49,7 +49,7 @@ trait GitSpecHelper {
             setBranch(branchName).
             setCloneAllBranches(true).
             setURI(uri.toString()).call()
-        def gl = GitLib.of(newJGit)
+        def gl = JgitGitLib.of(newJGit)
         initBasicConfig(newJGit)
 
         logger.debug "Cloned '${gitLib.workingDirectory()}' to '${gl.workingDirectory()}'"
@@ -66,7 +66,7 @@ trait GitSpecHelper {
         if (!testDir.isDirectory()) testDir.delete()
         Git git = Git.init().setDirectory(testDir).call()
         initBasicConfig(git)
-        return GitLib.of(git)
+        return JgitGitLib.of(git)
     }
 
 

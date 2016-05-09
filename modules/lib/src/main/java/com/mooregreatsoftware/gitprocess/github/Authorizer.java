@@ -21,6 +21,7 @@ import com.jcabi.http.Response;
 import com.jcabi.http.response.JsonResponse;
 import com.mooregreatsoftware.gitprocess.lib.ExecUtils;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
+import com.mooregreatsoftware.gitprocess.lib.JgitGitLib;
 import com.mooregreatsoftware.gitprocess.lib.Network;
 import javaslang.control.Try;
 import org.checkerframework.checker.nullness.qual.EnsuresNonNull;
@@ -249,7 +250,7 @@ public class Authorizer {
 
     // manual testing
     public static void main(String[] args) throws IOException {
-        Authorizer authorizer = new Authorizer(GitLib.of(new File(".")));
+        Authorizer authorizer = new Authorizer(JgitGitLib.of(new File(".")));
         final String oauthToken = authorizer.getOauthToken();
         System.out.println("Token: " + oauthToken);
     }

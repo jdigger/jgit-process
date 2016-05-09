@@ -18,7 +18,8 @@ package com.mooregreatsoftware.gitprocess.process
 import com.mooregreatsoftware.gitprocess.lib.Branch
 import com.mooregreatsoftware.gitprocess.lib.GitLib
 import com.mooregreatsoftware.gitprocess.lib.GitSpecification
-import com.mooregreatsoftware.gitprocess.lib.Rebaser
+import com.mooregreatsoftware.gitprocess.lib.JgitGitLib
+import com.mooregreatsoftware.gitprocess.lib.JgitRebaser
 import groovy.transform.Canonical
 import groovy.transform.CompileStatic
 import javaslang.control.Either
@@ -526,7 +527,8 @@ abstract class SyncSpec extends GitSpecification {
                     useLocal
                     local.fetch()
                     createAndCheckoutBranch("fb", "origin/fb")
-                    Rebaser.rebase(local, branch("origin/master"))
+
+                    rebaser(local).rebase(branch("origin/master"))
                     b1Sha = branchTip(local, "fb")
                     createD
 
@@ -592,7 +594,7 @@ abstract class SyncSpec extends GitSpecification {
 
                     useOrigin
                     checkout("fb")
-                    Rebaser.rebase(origin, branch("master"))
+                    rebaser(origin).rebase(branch("master"))
                     b1Sha = branchTip(origin, "fb")
 
                     verifyStartState()
@@ -634,7 +636,7 @@ abstract class SyncSpec extends GitSpecification {
 
                     useOrigin
                     checkout("fb")
-                    Rebaser.rebase(origin, branch("master"))
+                    rebaser(origin).rebase(branch("master"))
                     b1Sha = branchTip(origin, "fb")
 
                     verifyStartState()
@@ -699,7 +701,7 @@ abstract class SyncSpec extends GitSpecification {
 
                     useOrigin
                     checkout("fb")
-                    Rebaser.rebase(origin, branch("master"))
+                    rebaser(origin).rebase(branch("master"))
                     b1Sha = branchTip(origin, "fb")
                     createD
 
@@ -735,7 +737,7 @@ abstract class SyncSpec extends GitSpecification {
 
                     useOrigin
                     checkout("fb")
-                    Rebaser.rebase(origin, branch("master"))
+                    rebaser(origin).rebase(branch("master"))
                     b1Sha = branchTip(origin, "fb")
                     createD
 
@@ -1685,6 +1687,12 @@ abstract class SyncSpec extends GitSpecification {
     @CompileStatic
     def writeSyncControl() {
         currentLib.branches().currentBranch().recordLastSyncedAgainst()
+    }
+
+
+    @CompileStatic
+    protected static JgitRebaser rebaser(GitLib gitLib) {
+        return new JgitRebaser(gitLib as JgitGitLib)
     }
 
 }

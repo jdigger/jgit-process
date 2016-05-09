@@ -19,10 +19,8 @@ import com.mooregreatsoftware.gitprocess.config.BranchConfig;
 import javaslang.control.Try;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
-import org.eclipse.jgit.api.ListBranchCommand.ListMode;
+import org.eclipse.jgit.api.ListBranchCommand;
 import org.eclipse.jgit.lib.Ref;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.util.Iterator;
 import java.util.List;
@@ -33,65 +31,51 @@ import static org.eclipse.jgit.lib.Constants.HEAD;
 import static org.eclipse.jgit.lib.Constants.R_REFS;
 
 @SuppressWarnings({"RedundantCast", "RedundantTypeArguments"})
-public class DefaultBranches implements Branches {
-    private static final Logger LOG = LoggerFactory.getLogger(DefaultBranches.class);
-
-    private final GitLib gitLib;
+public class JgitBranches extends AbstractBranches {
+    private final JgitGitLib gitLib;
 
 
-    public DefaultBranches(GitLib gitLib) {
+    public JgitBranches(JgitGitLib gitLib) {
         this.gitLib = gitLib;
     }
 
 
     @Override
+    protected BranchConfig config() {
+        return gitLib.branchConfig();
+    }
+
+
+    @Override
     public @Nullable Branch currentBranch() {
-        final Ref ref = ref(HEAD);
+        final Ref ref = lookupRef(HEAD);
         if (ref == null) return null;
         final String targetName = ref.getTarget().getName();
         return targetName.startsWith(R_REFS) ? branch(targetName) : null;
     }
 
 
-    private @Nullable Ref ref(String name) {
-        return Try.<@Nullable Ref>of(() -> gitLib.repository().findRef(name)).
+    protected @Nullable Ref lookupRef(String refName) {
+        return Try.<@Nullable Ref>of(() -> gitLib.repository().findRef(refName)).
             getOrElse((Ref)null);
     }
 
 
     @Override
-    public BranchConfig config() {
-        return gitLib.branchConfig();
-    }
-
-
-    @Override
     public @Nullable Branch branch(String branchName) {
-        final Ref ref = ref(branchName);
-        return (ref == null) ? null : Branch.of(gitLib, ref.getName());
+        return Try.of(() -> JgitBranch.of(gitLib, branchName)).getOrElse((Branch)null);
     }
 
 
     @Override
-    // TODO don't allow creating a remote branch "shadow"
-    public Branch createBranch(String branchName, Branch baseBranch) throws BranchAlreadyExists {
-        if (branch(branchName) != null) throw new BranchAlreadyExists(branchName);
-
-        LOG.info("Creating branch \"{}\" based on \"{}\"", branchName, baseBranch.shortName());
-        Try.run(() -> gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call()).
-            getOrElseThrow(exceptionTranslator());
-
-        return (@NonNull Branch)branch(branchName);
+    protected void doCreateBranch(String branchName, Branch baseBranch) throws Exception {
+        gitLib.jgit().branchCreate().setName(branchName).setStartPoint(baseBranch.name()).call();
     }
 
 
     @Override
-    // TODO Add support for removing a remote branch
-    public Branches removeBranch(Branch branch) {
-        LOG.info("Removing branch \"{}\"", branch.shortName());
-        Try.run(() -> gitLib.jgit().branchDelete().setBranchNames(branch.name()).setForce(true).call()).
-            getOrElseThrow(exceptionTranslator());
-        return this;
+    protected void doRemoveBranch(Branch branch) throws Exception {
+        gitLib.jgit().branchDelete().setBranchNames(branch.name()).setForce(true).call();
     }
 
 
@@ -99,7 +83,7 @@ public class DefaultBranches implements Branches {
     public Iterator<Branch> allBranches() {
         // this may get expensive if there are a LOT of branches; fortunately it can be implemented to not do so
         // without breaking the API
-        List<Ref> branches = Try.of(() -> gitLib.jgit().branchList().setListMode(ListMode.ALL).call()).
+        List<Ref> branches = Try.of(() -> gitLib.jgit().branchList().setListMode(ListBranchCommand.ListMode.ALL).call()).
             getOrElseThrow(exceptionTranslator());
         return branches.
             stream().

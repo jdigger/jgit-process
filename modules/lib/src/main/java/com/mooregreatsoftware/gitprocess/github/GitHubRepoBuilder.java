@@ -21,23 +21,20 @@ import com.jcabi.github.Repo;
 import com.jcabi.github.RtGithub;
 import com.jcabi.http.Request;
 import com.jcabi.http.wire.RetryWire;
+import com.mooregreatsoftware.gitprocess.lib.ExecUtils;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
+import com.mooregreatsoftware.gitprocess.lib.JgitGitLib;
 import javaslang.control.Try;
 import org.checkerframework.checker.nullness.qual.MonotonicNonNull;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.checkerframework.checker.nullness.qual.RequiresNonNull;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 
 import java.io.File;
 import java.net.URI;
-import java.util.function.Function;
 
 public final class GitHubRepoBuilder implements GitHubRepo.B.TheAuthorizerOrBuild, GitHubRepo.B.ProjectName,
     GitHubRepo.B.Password, GitHubRepo.B.GitLibOrRepo {
-
-    private static final Logger LOG = LoggerFactory.getLogger(GitHubRepoBuilder.class);
 
     private @Nullable GitLib gitLib;
     private @Nullable String oauth2Token;
@@ -170,8 +167,8 @@ public final class GitHubRepoBuilder implements GitHubRepo.B.TheAuthorizerOrBuil
     private GitLib getGitLib() {
         return this.gitLib != null ?
             this.gitLib :
-            Try.of(() -> GitLib.of(new File("."))).
-                getOrElseThrow((Function<Throwable, IllegalStateException>)IllegalStateException::new);
+            Try.of(() -> JgitGitLib.of(new File("."))).
+                getOrElseThrow(ExecUtils.exceptionTranslator());
     }
 
 }

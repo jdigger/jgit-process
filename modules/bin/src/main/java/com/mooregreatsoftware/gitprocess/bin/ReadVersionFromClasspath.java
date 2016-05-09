@@ -15,7 +15,7 @@
  */
 package com.mooregreatsoftware.gitprocess.bin;
 
-import com.mooregreatsoftware.gitprocess.lib.GitLib;
+import com.mooregreatsoftware.gitprocess.lib.JgitGitLib;
 import org.checkerframework.checker.nullness.qual.NonNull;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,16 +30,16 @@ public class ReadVersionFromClasspath {
 
 
     /**
-     * Extract from the JAR file name that is providing the {@link GitLib} class the version information.
+     * Extract from the JAR file name that is providing the {@link JgitGitLib} class the version information.
      *
      * @return null if it can't derive the version
      */
     @Nullable
     @SuppressWarnings("RedundantCast")
     public static String version() {
-        final String classFile = GitLib.class.getName().replace('.', '/') + ".class";
+        final String classFile = JgitGitLib.class.getName().replace('.', '/') + ".class";
 
-        final ClassLoader classLoader = (@NonNull ClassLoader)GitLib.class.getClassLoader();
+        final ClassLoader classLoader = (@NonNull ClassLoader)JgitGitLib.class.getClassLoader();
         final URL resource = classLoader.getResource(classFile);
         if (resource == null) {
             LOG.warn("Could not find {} in the classloader", classFile);

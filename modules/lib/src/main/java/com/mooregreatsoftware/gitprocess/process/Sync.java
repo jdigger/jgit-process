@@ -17,20 +17,18 @@ package com.mooregreatsoftware.gitprocess.process;
 
 import com.mooregreatsoftware.gitprocess.lib.Branch;
 import com.mooregreatsoftware.gitprocess.lib.Branches;
+import com.mooregreatsoftware.gitprocess.lib.Combiner;
 import com.mooregreatsoftware.gitprocess.lib.GitLib;
 import com.mooregreatsoftware.gitprocess.lib.Merger;
 import com.mooregreatsoftware.gitprocess.lib.Pusher;
 import com.mooregreatsoftware.gitprocess.lib.Rebaser;
 import com.mooregreatsoftware.gitprocess.lib.SimpleFetchResult;
-import javaslang.Function2;
 import javaslang.control.Either;
 import org.checkerframework.checker.nullness.qual.Nullable;
 import org.eclipse.jgit.lib.ObjectId;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import static com.mooregreatsoftware.gitprocess.process.Sync.Combiners.MERGER;
-import static com.mooregreatsoftware.gitprocess.process.Sync.Combiners.REBASER;
 import static java.util.function.Function.identity;
 import static javaslang.control.Either.left;
 import static javaslang.control.Either.right;
@@ -98,12 +96,12 @@ public class Sync {
      * @return Left(error message), Right(resulting branch)
      */
     private static Either<String, Branch> mergeSync(GitLib gitLib, boolean localOnly) {
-        return combineSync(gitLib, localOnly, Combiners.of(MERGER));
+        return combineSync(gitLib, localOnly, Merger.of(gitLib));
     }
 
 
     private static Either<String, Branch> rebaseSync(GitLib gitLib, boolean localOnly) {
-        return combineSync(gitLib, localOnly, Combiners.of(REBASER));
+        return combineSync(gitLib, localOnly, Rebaser.of(gitLib));
     }
 
 
@@ -121,7 +119,7 @@ public class Sync {
                 String fetchErrMsg = fetch(gitLib, localOnly);
                 if (fetchErrMsg != null) return left(fetchErrMsg);
 
-                final String integrationCombineResult = combineWith(gitLib, integrationBranch, combiner, currentBranch);
+                final String integrationCombineResult = combineWith(integrationBranch, combiner, currentBranch);
                 if (integrationCombineResult == null) {
                     String pushErrMsg = pushCombinedBranch(gitLib, localOnly, combiner, currentBranch);
                     return pushErrMsg != null ? left(pushErrMsg) : right(currentBranch);
@@ -202,8 +200,7 @@ public class Sync {
      *
      * @return an error message, or null if there was no error
      */
-    private static <T> @Nullable String combineWith(GitLib gitLib,
-                                                    Branch baseBranch,
+    private static <T> @Nullable String combineWith(Branch baseBranch,
                                                     Combiner<T> combiner,
                                                     Branch currentBranch) {
         final String combineType = combiner.typeName();
@@ -212,7 +209,7 @@ public class Sync {
                 currentBranch, baseBranch);
         }
 
-        final Either<String, T> eCombined = combiner.apply(gitLib, baseBranch);
+        final Either<String, T> eCombined = combiner.combine(baseBranch);
 
         if (eCombined.isLeft()) return eCombined.getLeft();
 
@@ -242,20 +239,20 @@ public class Sync {
         if (lastSyncedOID != null) { // deal with possible change
             if (remoteOID == null) {
                 LOG.warn("The remote version of this branch has disappeared");
-                return right(Pusher.create(gitLib, currentBranch, currentBranch.simpleName(), false, null, null));
+                return right(Pusher.from(gitLib).localBranch(currentBranch).remoteBranchName(currentBranch.simpleName()).force(false).build());
             }
 
             if (remoteOID.equals(lastSyncedOID)) {
                 LOG.debug("The last synced OID is the same as the remote OID: {}", char7(remoteOID));
                 if (currentBranch.contains(remoteOID)) {
                     LOG.debug("\"{}\" contains {} so will do a normal fast-forward push", currentBranch.simpleName(), char7(remoteOID));
-                    return right(Pusher.create(gitLib, currentBranch, currentBranch.simpleName(), false, null, null));
+                    return right(Pusher.from(gitLib).localBranch(currentBranch).remoteBranchName(currentBranch.simpleName()).force(false).build());
                 }
                 else {
                     LOG.debug("{} does not appear in the history of \"{}\", but since it was not remotely " +
                             "changed going to assume that the local copy is correct and will force push",
                         char7(remoteOID), currentBranch.simpleName());
-                    return right(Pusher.create(gitLib, currentBranch, currentBranch.simpleName(), true, null, null));
+                    return right(Pusher.from(gitLib).localBranch(currentBranch).remoteBranchName(currentBranch.simpleName()).force(true).build());
                 }
             }
             else {
@@ -271,12 +268,12 @@ public class Sync {
             LOG.debug("This has not been synced before");
 
             if (remoteOID == null) {
-                return right(Pusher.create(gitLib, currentBranch, currentBranch.simpleName(), false, null, null));
+                return right(Pusher.from(gitLib).localBranch(currentBranch).remoteBranchName(currentBranch.simpleName()).force(false).build());
             }
 
             if (currentBranch.contains(remoteOID)) {
                 LOG.debug("\"{}\" contains {} so will do a normal fast-forward push", currentBranch.simpleName(), char7(remoteOID));
-                return right(Pusher.create(gitLib, currentBranch, currentBranch.simpleName(), false, null, null));
+                return right(Pusher.from(gitLib).localBranch(currentBranch).remoteBranchName(currentBranch.simpleName()).force(false).build());
             }
             else {
                 LOG.warn("The remote branch has changed since this branch was " +
@@ -299,61 +296,23 @@ public class Sync {
         final String remoteBranchName = currentBranch.remoteBranchName();
         if (remoteBranchName == null) return left("Could not determine a remote branch name for " + currentBranch);
 
-        final Branch remoteBranch = gitLib.branches().branch(remoteBranchName);
-        final Either<String, T> eRemote = combiner.apply(gitLib, remoteBranch);
+        final Branches branches = gitLib.branches();
+        final Branch remoteBranch = branches.branch(remoteBranchName);
+        if (remoteBranch == null) return left("Could not find a local reference for " + remoteBranchName);
+        final Either<String, T> eRemote = combiner.combine(remoteBranch);
         if (eRemote.isLeft()) return left(eRemote.getLeft());
 
         // reapply to integration so that it can fast-forward with it
-        final Either<String, T> eIntegration = combiner.apply(gitLib, gitLib.branches().integrationBranch());
+        final Branch integrationBranch = branches.integrationBranch();
+        if (integrationBranch == null)
+            return left("Could not find the integration branch while reconciling with remote");
+
+        final Either<String, T> eIntegration = combiner.combine(integrationBranch);
         if (eIntegration.isLeft()) return left(eIntegration.getLeft());
 
         // if it had to "reconcile" with remote, that means that this may not be a simple fast-forward on the remote
         // branch, so use force-push
-        return right(Pusher.create(gitLib, currentBranch, currentBranch.simpleName(), true, null, null));
-    }
-
-
-    // **********************************************************************
-    //
-    // HELPER CLASSES
-    //
-    // **********************************************************************
-
-    interface Combiner<T> extends Function2<GitLib, Branch, Either<String, T>> {
-        String typeName();
-    }
-
-    enum Combiners {
-        REBASER(Rebaser::rebase, "rebase"),
-        MERGER(Merger::merge, "merge");
-
-        private final Function2<GitLib, Branch, Either<String, ?>> function;
-        private final String typeName;
-
-
-        Combiners(Function2<GitLib, Branch, Either<String, ?>> function, String typeName) {
-            this.function = function;
-            this.typeName = typeName;
-        }
-
-
-        @SuppressWarnings("unchecked")
-        public static <T> Combiner<T> of(Combiners combiner) {
-            // work-around for Java generics silliness
-            return new Combiner<T>() {
-                @Override
-                public String typeName() {
-                    return combiner.typeName;
-                }
-
-
-                @Override
-                public Either<String, T> apply(GitLib gitLib, Branch branch) {
-                    return (Either<String, T>)combiner.function.apply(gitLib, branch);
-                }
-            };
-        }
-
+        return right(Pusher.from(gitLib).localBranch(currentBranch).remoteBranchName(currentBranch.simpleName()).force(true).build());
     }
 
 }
